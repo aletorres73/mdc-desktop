@@ -1,4 +1,4 @@
-// Firebase REST API Response Types
+// Firebase Auth Types (compatible with Firebase SDK)
 
 export interface FirebaseAuthResponse {
   kind: string;
@@ -31,32 +31,6 @@ export interface TokenRefreshResponse {
   id_token: string;
   user_id: string;
   project_id: string;
-}
-
-// Firestore REST API Types
-export interface FirestoreDocument {
-  name: string;
-  fields: Record<string, FirestoreValue>;
-  createTime: string;
-  updateTime: string;
-}
-
-export interface FirestoreValue {
-  stringValue?: string;
-  integerValue?: string;
-  doubleValue?: number;
-  booleanValue?: boolean;
-  nullValue?: null;
-  timestampValue?: string;
-  arrayValue?: { values: FirestoreValue[] };
-  mapValue?: { fields: Record<string, FirestoreValue> };
-  referenceValue?: string;
-  geoPointValue?: { latitude: number; longitude: number };
-}
-
-export interface FirestoreListResponse {
-  documents?: FirestoreDocument[];
-  nextPageToken?: string;
 }
 
 // App User domain model — mirrors Kotlin AppUser (domain/model/AppUser.kt)

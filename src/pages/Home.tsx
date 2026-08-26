@@ -1,43 +1,105 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
+import { useFactories } from "@/hooks";
+import { AppSidebar } from "@/components/AppSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Package, TrendingUp, Factory } from "lucide-react";
 
 /**
- * Home screen — placeholder for Phase 4
- * Will load InitConfig + user data from Firestore
+ * Home screen — mirrors Kotlin MainScreen / HomeViewModel
+ * Loads factories and shows dashboard
  */
 export default function Home() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const { data: factories, isLoading, error } = useFactories();
+
+  const stats = [
+    { label: "Fábricas", value: factories?.length ?? 0, icon: Factory },
+    { label: "Marcas totales", value: factories?.reduce((sum, f) => sum + f.branchList.length, 0) ?? 0, icon: Package },
+    { label: "Comisión base promedio", value: factories?.length
+      ? (factories.reduce((sum, f) => sum + f.defaultCommission, 0) / factories.length).toFixed(1) + "%"
+      : "0%", icon: TrendingUp },
+  ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top bar */}
-      <header className="border-b bg-card px-6 py-3">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">MDC App</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              {user?.email}
-            </span>
-            <Button variant="outline" size="sm" onClick={() => logout()}>
-              Cerrar sesión
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background flex">
+      <AppSidebar />
+      <main className="flex-1 min-w-0 p-6">
+        <div className="mx-auto max-w-7xl space-y-6">
+          {/* Header */}
+          <header className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold">Panel de control</h1>
+              <p className="text-muted-foreground">
+                Bienvenido, {user?.displayName ?? user?.email}
+              </p>
+            </div>
+          </header>
 
-      {/* Content */}
-      <main className="mx-auto max-w-4xl p-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Bienvenido, {user?.displayName || user?.email}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Home en construcción — Phase 4
-            </p>
-          </CardContent>
-        </Card>
+          {/* Stats Grid */}
+          <div className="grid gap-4 md:grid-cols-3">
+            {stats.map((stat) => (
+              <Card key={stat.label}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
+                  <stat.icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Factories List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Fábricas configuradas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="h-10 w-10 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : error ? (
+                <div className="text-center py-8 text-destructive">
+                  Error al cargar fábricas
+                </div>
+              ) : factories && factories.length > 0 ? (
+                <div className="space-y-4">
+                  {factories.map((factory) => (
+                    <div
+                      key={factory.name}
+                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
+                    >
+                      <div>
+                        <p className="font-medium">{factory.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {factory.branchList.length} marcas • {factory.paymentType.length} condiciones
+                        </p>
+                      </div>
+                      <span className="text-sm font-medium text-primary">
+                        {factory.defaultCommission}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No hay fábricas configuradas
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </main>
     </div>
   );

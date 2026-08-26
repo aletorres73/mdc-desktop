@@ -1,14 +1,24 @@
-// Firebase REST API Configuration
-// Matching the Desktop (jvmMain) REST-based Firebase setup
+// Firebase SDK Configuration
+// Using environment variables for security
 
-export const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyC8RSmswZFBr4IhOgjtTyxH0GojOtu9F8k",
-  projectId: "database-rw-60033",
-  authDomain: "database-rw-60033.firebaseapp.com",
-  storageBucket: "database-rw-60033.appspot.com",
-} as const;
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 
-// API Endpoints
-export const AUTH_ENDPOINT = `https://identitytoolkit.googleapis.com/v1/accounts`;
-export const FIRESTORE_ENDPOINT = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents`;
-export const STORAGE_ENDPOINT = `https://firestorage.googleapis.com/v0/b/${FIREBASE_CONFIG.storageBucket}/o`;
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+};
+
+// Initialize Firebase
+export const app = initializeApp(firebaseConfig);
+
+// Initialize Firestore
+export const db = getFirestore(app);
+
+// Export config for reference if needed
+export { firebaseConfig };
