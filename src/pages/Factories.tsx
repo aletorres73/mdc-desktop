@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useFactories, useDeleteFactory } from "@/hooks";
 import type { FactoryModel } from "@/types/domain";
-import { AppSidebar } from "@/components/AppSidebar";
 import {
   Table,
   TableHeader,
@@ -63,9 +62,7 @@ export default function Factories() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar />
-      <main className="flex-1 min-w-0 p-6">
+    <div className="min-h-svh w-full min-w-0 bg-background p-4 sm:p-6">
         <div className="mx-auto max-w-7xl space-y-6">
           {/* Header */}
           <header className="flex items-center justify-between">
@@ -225,7 +222,6 @@ export default function Factories() {
           />
         )}
 
-      </main>
     </div>
   );
 }

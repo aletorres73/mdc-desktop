@@ -66,7 +66,7 @@ export function useInvoices(filters: InvoiceFilters) {
 
   return useInfiniteQuery({
     queryKey: ["invoices", filters, user?.uid],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }) => {
       if (!user?.uid) throw new Error("No user");
 
       const firestoreFilters = buildInvoiceFilters(filters);
@@ -82,6 +82,7 @@ export function useInvoices(filters: InvoiceFilters) {
           filters: firestoreFilters,
           orderBy: { field: orderBy, direction: "desc" },
           limit: PAGE_SIZE + 1, // fetch one extra to detect end
+          startAfter: pageParam,
         }
       );
 
@@ -94,7 +95,7 @@ export function useInvoices(filters: InvoiceFilters) {
 
       // Use timeStamp of last item as cursor
       const nextCursor = hasMore
-        ? items[PAGE_SIZE - 1].timeStamp.toString()
+        ? docs[PAGE_SIZE - 1][orderBy as keyof RemoteResultBillingModel]
         : null;
 
       return {
@@ -106,7 +107,7 @@ export function useInvoices(filters: InvoiceFilters) {
     },
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: !!user?.uid,
-    initialPageParam: null as string | null,
+    initialPageParam: null as unknown,
   });
 }
 

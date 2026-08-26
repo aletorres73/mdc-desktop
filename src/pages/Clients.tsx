@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useClients, useCreateClient, useDeleteClient } from "@/hooks";
-import { AppSidebar } from "@/components/AppSidebar";
 import {
   Table,
   TableHeader,
@@ -19,12 +19,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from "@/components/ui/label";
 import { Search, Plus, Trash2, Loader2 } from "lucide-react";
 import type { ClientFilters } from "@/types/domain";
+import { clientDetailRoute } from "@/types/routes";
 
 /**
  * Clients page — mirrors Kotlin ClientsScreen / ClientsViewModel
  * Features: search, pagination, create/delete dialogs
  */
 export default function Clients() {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<ClientFilters>({ search: "" });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newClientName, setNewClientName] = useState("");
@@ -62,9 +64,7 @@ export default function Clients() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar />
-      <main className="flex-1 min-w-0 p-6">
+    <main className="min-h-screen bg-background p-6">
         <div className="mx-auto max-w-4xl space-y-6">
           {/* Header */}
           <header className="flex items-center justify-between">
@@ -75,12 +75,14 @@ export default function Clients() {
               </p>
             </div>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger>
-                <Button>
+              <DialogTrigger
+                render={
+                  <Button>
                   <Plus className="mr-2 h-4 w-4" />
                   Nuevo cliente
-                </Button>
-              </DialogTrigger>
+                  </Button>
+                }
+              />
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Crear cliente</DialogTitle>
@@ -180,14 +182,18 @@ export default function Clients() {
                       </TableHeader>
                       <TableBody>
                         {clients.map((client) => (
-                          <TableRow key={client.clientId}>
+                          <TableRow key={client.clientId} className="cursor-pointer" onClick={() => navigate(clientDetailRoute(client.clientId))}>
                             <TableCell className="font-mono text-sm">{client.clientId}</TableCell>
-                            <TableCell>{client.clientName}</TableCell>
+                            <TableCell>
+                              <Link className="font-medium hover:underline" to={clientDetailRoute(client.clientId)}>
+                                {client.clientName}
+                              </Link>
+                            </TableCell>
                             <TableCell>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => setDeleteConfirmId(client.clientId)}
+                                onClick={(event) => { event.stopPropagation(); setDeleteConfirmId(client.clientId); }}
                                 disabled={deleteClient.isPending}
                               >
                                 <Trash2 className="h-4 w-4 text-destructive" />
@@ -257,7 +263,6 @@ export default function Clients() {
             </DialogContent>
           </Dialog>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }

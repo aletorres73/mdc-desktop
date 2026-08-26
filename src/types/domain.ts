@@ -175,7 +175,7 @@ export function toBillingDomain(remote: RemoteResultBillingModel): BillingModel 
     loadDate: remote.Fecha,
     deliveryDate: remote["Fecha recepción"],
     payDate: remote["Fecha Pago"],
-    articles: remote.Articulos.map((a) => ({
+    articles: (remote.Articulos ?? []).map((a) => ({
       name: a.Articulo,
       color: a.Color,
       value: parseFloat(a.Importe) || 0,
@@ -190,7 +190,7 @@ export function toBillingDomain(remote: RemoteResultBillingModel): BillingModel 
     clientId: remote["Cliente Id"],
     brand: remote.Marca,
     branch: remote.Segmento,
-    comments: remote.Comentarios.map((c) => ({
+    comments: (remote.Comentarios ?? []).map((c) => ({
       comments: c.comments,
       date: c.date,
     })),

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useFactory, useFactoryPaymentConditions, useDeleteFactory } from "@/hooks";
-import { AppSidebar } from "@/components/AppSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,9 +25,7 @@ export default function FactoryDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex">
-        <AppSidebar />
-        <main className="flex-1 min-w-0 p-6">
+      <main className="min-h-svh w-full p-4 sm:p-6">
           <div className="mx-auto max-w-4xl space-y-6">
             <Card>
               <CardHeader>
@@ -49,16 +46,13 @@ export default function FactoryDetail() {
               </CardContent>
             </Card>
           </div>
-        </main>
-      </div>
+      </main>
     );
   }
 
   if (error || !factory) {
     return (
-      <div className="min-h-screen bg-background flex">
-        <AppSidebar />
-        <main className="flex-1 min-w-0 p-6">
+      <main className="min-h-svh w-full p-4 sm:p-6">
           <div className="mx-auto max-w-4xl">
             <Card>
               <CardContent className="text-center py-8">
@@ -73,15 +67,12 @@ export default function FactoryDetail() {
               </CardContent>
             </Card>
           </div>
-        </main>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar />
-      <main className="flex-1 min-w-0 p-6">
+    <main className="min-h-svh w-full p-4 sm:p-6">
         <div className="mx-auto max-w-4xl space-y-6">
           {/* Header with back button */}
           <div className="flex items-center gap-4">
@@ -278,7 +269,6 @@ export default function FactoryDetail() {
           />
         )}
 
-      </main>
-    </div>
+    </main>
   );
 }

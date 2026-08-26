@@ -1,6 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useFactories } from "@/hooks";
-import { AppSidebar } from "@/components/AppSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Package, TrendingUp, Factory } from "lucide-react";
@@ -22,9 +21,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar />
-      <main className="flex-1 min-w-0 p-6">
+    <div className="min-h-svh w-full min-w-0 bg-background p-4 sm:p-6">
         <div className="mx-auto max-w-7xl space-y-6">
           {/* Header */}
           <header className="flex items-center justify-between">
@@ -100,7 +97,6 @@ export default function Home() {
             </CardContent>
           </Card>
         </div>
-      </main>
     </div>
   );
 }

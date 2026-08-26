@@ -11,6 +11,7 @@ import {
   signUp,
   signOut,
   updateUserPassword,
+  reauthenticate as reauthenticateUser,
   onAuthStateChange,
 } from "@/lib/firebase/client";
 import { auth } from "@/lib/firebase/client";
@@ -66,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reauthenticate = useCallback(async (password: string) => {
-    await reauthenticate(password);
+    await reauthenticateUser(password);
   }, []);
 
   const getIdToken = useCallback(async () => {

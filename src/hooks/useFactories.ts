@@ -16,8 +16,10 @@ function factoriesPath(uid: string): string {
  * Convert RemoteResultFactoryModel (Firestore format) → FactoryModel (domain)
  * Mirrors Kotlin RemoteResultFactoryModel.toFactoryDomain()
  */
-function toFactoryDomain(remote: RemoteResultFactoryModel): FactoryModel {
-  const paymentType = Object.values(remote.Condiciones).map((cond) => ({
+function toPaymentConditions(
+  conditions: RemoteResultFactoryModel["Condiciones"] | null | undefined
+): PaymentCondition[] {
+  return Object.values(conditions ?? {}).map((cond) => ({
     paymentName: cond.condicion ?? "Sin condición",
     discount: parseFloat(cond.dto ?? "0"),
     month: parseInt(cond.meses ?? "0"),
@@ -25,13 +27,17 @@ function toFactoryDomain(remote: RemoteResultFactoryModel): FactoryModel {
     date: parseInt(cond.plazo ?? "0"),
     quantity: parseInt(cond.pagos ?? "0"),
   }));
+}
+
+function toFactoryDomain(remote: RemoteResultFactoryModel): FactoryModel {
+  const paymentType = toPaymentConditions(remote.Condiciones);
 
   return {
     name: remote.Fabrica,
-    branchList: remote.Marcas,
+    branchList: remote.Marcas ?? [],
     paymentType,
-    defaultCommission: remote.ComisionBase,
-    segmentCommissions: remote.ComisionesSegmento,
+    defaultCommission: remote.ComisionBase ?? 0,
+    segmentCommissions: remote.ComisionesSegmento ?? {},
   };
 }
 
@@ -137,14 +143,7 @@ export function useFactoryPaymentConditions(factoryName: string | null) {
       if (docs.length === 0) return [];
 
       const remote = docs[0];
-      return Object.values(remote.Condiciones).map((cond) => ({
-        paymentName: cond.condicion ?? "Sin condición",
-        discount: parseFloat(cond.dto ?? "0"),
-        month: parseInt(cond.meses ?? "0"),
-        expiration: parseInt(cond.vencimiento ?? "0"),
-        date: parseInt(cond.plazo ?? "0"),
-        quantity: parseInt(cond.pagos ?? "0"),
-      }));
+      return toPaymentConditions(remote.Condiciones);
     },
     enabled: !!factoryName && !!user?.uid,
   });

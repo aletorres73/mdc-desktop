@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { ROUTES } from "@/types/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +27,7 @@ export default function SignUp() {
 
     try {
       await register(email, password, displayName);
-      navigate("/", { replace: true });
+      navigate(ROUTES.HOME, { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error desconocido";
       if (message.includes("EMAIL_EXISTS")) {
@@ -107,7 +108,7 @@ export default function SignUp() {
 
             <div className="text-center text-sm text-muted-foreground">
               ¿Ya tenés cuenta?{" "}
-              <Link to="/login" className="text-primary underline hover:text-primary/80">
+              <Link to={ROUTES.LOGIN} className="text-primary underline hover:text-primary/80">
                 Iniciá sesión
               </Link>
             </div>

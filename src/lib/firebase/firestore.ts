@@ -11,12 +11,37 @@ import {
   where,
   orderBy,
   limit,
+  startAfter,
+  Timestamp,
   getDocs,
   DocumentData,
   QueryConstraint,
   WhereFilterOp,
   UpdateData,
 } from "firebase/firestore";
+
+function normalizeFirestoreValue(value: unknown): unknown {
+  if (value instanceof Timestamp) return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  if (Array.isArray(value)) return value.map(normalizeFirestoreValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [
+        key,
+        normalizeFirestoreValue(nestedValue),
+      ])
+    );
+  }
+  return value;
+}
+
+function normalizeDocument<T>(id: string, data: DocumentData): T {
+  const normalizedData = normalizeFirestoreValue(data);
+  return {
+    ...(normalizedData as Record<string, unknown>),
+    id,
+  } as T;
+}
 
 // ─── CRUD Operations ───
 
@@ -31,7 +56,7 @@ export async function getDocument<T = DocumentData>(
   const docSnap = await getDoc(docRef);
 
   if (!docSnap.exists()) return null;
-  return { id: docSnap.id, ...docSnap.data() } as T;
+  return normalizeDocument<T>(docSnap.id, docSnap.data());
 }
 
 /**
@@ -93,6 +118,7 @@ export async function getCollection<T = DocumentData>(
     filters?: Array<{ field: string; op: "=" | "<" | "<=" | ">" | ">=" | "array-contains" | "in"; value: unknown }>;
     orderBy?: { field: string; direction?: "asc" | "desc" };
     limit?: number;
+    startAfter?: unknown;
   }
 ): Promise<T[]> {
   const colRef = collection(db, collectionName);
@@ -112,11 +138,14 @@ export async function getCollection<T = DocumentData>(
     constraints.push(limit(options.limit));
   }
 
+  if (options?.startAfter !== undefined && options.startAfter !== null) {
+    constraints.push(startAfter(options.startAfter));
+  }
+
   const q = query(colRef, ...constraints);
   const querySnapshot = await getDocs(q);
 
-  return querySnapshot.docs.map((docSnap) => ({
-    id: docSnap.id,
-    ...docSnap.data(),
-  })) as T[];
+  return querySnapshot.docs.map((docSnap) =>
+    normalizeDocument<T>(docSnap.id, docSnap.data())
+  );
 }

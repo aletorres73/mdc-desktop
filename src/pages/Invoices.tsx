@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useInvoices, INVOICE_STATES } from "@/hooks";
 import type { InvoiceFilters } from "@/types/domain";
-import { AppSidebar } from "@/components/AppSidebar";
 import {
   Table,
   TableHeader,
@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Filter, ChevronDown, Download } from "lucide-react";
+import { invoiceDetailRoute } from "@/types/routes";
 
 /**
  * Invoices page — mirrors Kotlin InvoicesPagedScreen / InvoicesPagedViewModel
@@ -78,9 +79,7 @@ export default function Invoices() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar />
-      <main className="flex-1 min-w-0 p-6">
+    <div className="min-h-svh w-full min-w-0 bg-background p-4 sm:p-6">
         <div className="mx-auto max-w-7xl space-y-6">
           {/* Header */}
           <header className="flex items-center justify-between">
@@ -220,8 +219,12 @@ export default function Invoices() {
                       </TableHeader>
                       <TableBody>
                         {invoices.map((invoice) => (
-                          <TableRow key={invoice.billingNumber} className="cursor-pointer hover:bg-accent/50">
-                            <TableCell className="font-mono text-sm">{invoice.billingNumber}</TableCell>
+                          <TableRow key={invoice.billingNumber} className="hover:bg-accent/50">
+                            <TableCell className="font-mono text-sm">
+                              <Link className="hover:underline" to={invoiceDetailRoute(invoice.billingNumber)}>
+                                {invoice.billingNumber}
+                              </Link>
+                            </TableCell>
                             <TableCell className="max-w-xs truncate">{invoice.clientName}</TableCell>
                             <TableCell>{formatDate(invoice.loadDate)}</TableCell>
                             <TableCell>{formatDate(invoice.payDate)}</TableCell>
@@ -269,7 +272,6 @@ export default function Invoices() {
             </CardContent>
           </Card>
         </div>
-      </main>
     </div>
   );
 }

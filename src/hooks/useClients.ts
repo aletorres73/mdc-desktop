@@ -1,6 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCollection, addDocument, updateDocument, deleteDocument } from "@/lib/firebase/firestore";
+import { getCollection, getDocument, addDocument, updateDocument, deleteDocument } from "@/lib/firebase/firestore";
 import type {
   RemoteResultClientModel,
   ClientModel,
@@ -99,9 +99,17 @@ export function useClient(clientId: string | null) {
     queryKey: ["client", clientId],
     queryFn: async () => {
       if (!clientId || !user?.uid) throw new Error("No client ID or user");
-      // We need the user ID for the path - this is a limitation
-      // In practice, we'd get this from auth context
-      return null as ClientModel | null;
+      const document = await getDocument<RemoteResultClientModel>(
+        clientsPath(user.uid),
+        clientId
+      );
+      if (document) return toClientDomain(document);
+
+      const matches = await getCollection<RemoteResultClientModel>(
+        clientsPath(user.uid),
+        { filters: [{ field: "Cliente Id", op: "=", value: clientId }], limit: 1 }
+      );
+      return matches.length > 0 ? toClientDomain(matches[0]) : null;
     },
     enabled: !!clientId && !!user?.uid,
   });

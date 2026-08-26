@@ -11,10 +11,11 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   updateProfile,
+  sendPasswordResetEmail,
+  deleteUser as firebaseDeleteUser,
   User as FirebaseUser
 } from "firebase/auth";
 import { 
-  enableIndexedDbPersistence,
   collection,
   doc,
   getDoc,
@@ -36,9 +37,6 @@ import {
 // Auth with persistence
 export const auth = getAuth(app);
 setPersistence(auth, indexedDBLocalPersistence).catch(console.error);
-
-// Firestore with offline persistence
-enableIndexedDbPersistence(db).catch(console.error);
 
 // ─── Auth helpers ───
 
@@ -70,6 +68,16 @@ export async function reauthenticate(password: string) {
   if (!user || !user.email) throw new Error("No user logged in");
   const credential = EmailAuthProvider.credential(user.email, password);
   await reauthenticateWithCredential(user, credential);
+}
+
+export async function deleteCurrentUser() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("No user logged in");
+  await firebaseDeleteUser(user);
+}
+
+export async function sendPasswordReset(email: string) {
+  await sendPasswordResetEmail(auth, email);
 }
 
 export function onAuthStateChange(callback: (user: FirebaseUser | null) => void) {

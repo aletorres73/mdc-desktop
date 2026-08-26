@@ -10,7 +10,6 @@ import {
   SidebarMenuButton,
   SidebarHeader,
   SidebarFooter,
-  SidebarProvider,
 } from "@/components/ui/sidebar";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,16 +34,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { ROUTES } from "@/types/routes";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Inicio", icon: LayoutDashboard },
-  { href: "/clients", label: "Clientes", icon: Users },
-  { href: "/orders", label: "Pedidos", icon: Package },
-  { href: "/invoices", label: "Facturas", icon: FileText },
-  { href: "/factories", label: "Fábricas", icon: Factory },
-  { href: "/agenda", label: "Agenda", icon: Calendar },
-  { href: "/commissions", label: "Comisiones", icon: CreditCard },
-  { href: "/profile", label: "Perfil", icon: Settings },
+  { href: ROUTES.HOME, label: "Inicio", icon: LayoutDashboard },
+  { href: ROUTES.CLIENTS, label: "Clientes", icon: Users },
+  { href: ROUTES.ORDERS, label: "Pedidos", icon: Package },
+  { href: ROUTES.INVOICES, label: "Facturas", icon: FileText },
+  { href: ROUTES.FACTORIES, label: "Fábricas", icon: Factory },
+  { href: ROUTES.AGENDA, label: "Agenda", icon: Calendar },
+  { href: ROUTES.COMMISSIONS, label: "Comisiones", icon: CreditCard },
+  { href: ROUTES.PROFILE, label: "Perfil", icon: Settings },
 ] as const;
 
 export function AppSidebar() {
@@ -53,8 +53,7 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
 
   return (
-    <SidebarProvider>
-      <Sidebar>
+    <Sidebar>
         <SidebarHeader>
         <div className="flex h-16 items-center gap-2 px-4">
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
@@ -70,7 +69,9 @@ export function AppSidebar() {
             <SidebarMenu>
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
-                const isActive = location.pathname === item.href;
+                const isActive =
+                  location.pathname === item.href ||
+                  (item.href !== ROUTES.HOME && location.pathname.startsWith(`${item.href}/`));
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
@@ -115,6 +116,5 @@ export function AppSidebar() {
         </div>
       </SidebarFooter>
     </Sidebar>
-  </SidebarProvider>
   );
 }

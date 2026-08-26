@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAllClients, useFactoriesForOrders, useCreateClient } from "@/hooks";
-import { AppSidebar } from "@/components/AppSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,9 +107,7 @@ export default function CreateOrder() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar />
-      <main className="flex-1 min-w-0 p-6">
+    <main className="min-h-svh w-full p-4 sm:p-6">
         <div className="mx-auto max-w-3xl space-y-6">
           {/* Progress indicator */}
           <div className="flex items-center justify-between">
@@ -454,7 +451,6 @@ export default function CreateOrder() {
             </DialogContent>
           </Dialog>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }

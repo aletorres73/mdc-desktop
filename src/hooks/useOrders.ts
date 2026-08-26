@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCollection } from "@/lib/firebase/firestore";
+import { getCollection, getDocument } from "@/lib/firebase/firestore";
 import type {
   RemoteResultBuyOrder,
   RemoteResultOrder,
-  BuyOrderModel,
   OrderFilters,
 } from "@/types/domain";
 import { toBuyOrderDomain, toOrderDomain } from "@/types/domain";
@@ -112,9 +111,17 @@ export function useBuyOrder(clientId: string | null, orderId: string | null) {
     queryKey: ["buyOrder", clientId, orderId],
     queryFn: async () => {
       if (!clientId || !orderId || !user?.uid) throw new Error("Missing clientId or orderId or user");
-      // We need the user ID - this is a limitation
-      // In practice, we'd get this from auth context
-      return null as BuyOrderModel | null;
+
+      const path = buyOrdersPath(user.uid, clientId);
+      const document = await getDocument<RemoteResultBuyOrder>(path, orderId);
+      if (document) return toBuyOrderDomain(document);
+
+      const matches = await getCollection<RemoteResultBuyOrder>(path, {
+        filters: [{ field: "Pedido Id", op: "=", value: orderId }],
+        limit: 1,
+      });
+
+      return matches.length > 0 ? toBuyOrderDomain(matches[0]) : null;
     },
     enabled: !!clientId && !!orderId && !!user?.uid,
   });
@@ -132,11 +139,11 @@ export function useFactoriesForOrders() {
     queryFn: async () => {
       if (!user?.uid) throw new Error("No user");
 
-      const docs = await getCollection<{ name: string }>(
+      const docs = await getCollection<{ Fabrica?: string }>(
         factoriesPath(user.uid)
       );
 
-      return docs.map((d) => d.name).sort();
+      return docs.map((d) => d.Fabrica ?? "").filter(Boolean).sort();
     },
     enabled: !!user?.uid,
     staleTime: 10 * 60 * 1000,

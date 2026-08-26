@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { ROUTES } from "@/types/routes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +27,7 @@ export default function Login() {
 
     try {
       await login(email, password);
-      navigate("/", { replace: true });
+      navigate(ROUTES.HOME, { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error desconocido";
       // Translate common Firebase errors to Spanish (matches Kotlin LoginViewModel)
@@ -93,7 +94,7 @@ export default function Login() {
 
             <div className="text-center text-sm text-muted-foreground">
               ¿No tenés cuenta?{" "}
-              <Link to="/sign-up" className="text-primary underline hover:text-primary/80">
+              <Link to={ROUTES.SIGN_UP} className="text-primary underline hover:text-primary/80">
                 Registrate
               </Link>
             </div>
