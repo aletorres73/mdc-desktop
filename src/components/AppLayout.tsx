@@ -8,10 +8,10 @@ import { AppSidebar } from "@/components/AppSidebar";
 
 export function AppLayout() {
   return (
-    <SidebarProvider className="md:pl-64">
+    <SidebarProvider>
       <AppSidebar />
       <SidebarInset className="min-w-0">
-        <header className="flex h-14 items-center border-b px-4 md:hidden">
+        <header className="flex h-14 items-center border-b px-4 lg:hidden">
           <SidebarTrigger />
         </header>
         <Outlet />

@@ -115,7 +115,7 @@ export async function addDocument(
 export async function getCollection<T = DocumentData>(
   collectionName: string,
   options?: {
-    filters?: Array<{ field: string; op: "=" | "<" | "<=" | ">" | ">=" | "array-contains" | "in"; value: unknown }>;
+    filters?: Array<{ field: string; op: "=" | "==" | "<" | "<=" | ">" | ">=" | "array-contains" | "in"; value: unknown }>;
     orderBy?: { field: string; direction?: "asc" | "desc" };
     limit?: number;
     startAfter?: unknown;
@@ -126,7 +126,8 @@ export async function getCollection<T = DocumentData>(
 
   if (options?.filters && options.filters.length > 0) {
     for (const filter of options.filters) {
-      constraints.push(where(filter.field, filter.op as WhereFilterOp, filter.value));
+      const operator = filter.op === "=" ? "==" : filter.op;
+      constraints.push(where(filter.field, operator as WhereFilterOp, filter.value));
     }
   }
 
