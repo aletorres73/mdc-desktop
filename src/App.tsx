@@ -1,25 +1,25 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { AppLayout } from "@/components/AppLayout";
-import Login from "@/pages/Login";
-import SignUp from "@/pages/SignUp";
-import Home from "@/pages/Home";
-import Invoices from "@/pages/Invoices";
-import InvoiceDetail from "@/pages/InvoiceDetail";
-import Clients from "@/pages/Clients";
-import ClientDetail from "@/pages/ClientDetail";
-import Orders from "@/pages/Orders";
-import OrderDetail from "@/pages/OrderDetail";
-import CreateOrder from "@/pages/CreateOrder";
-import Factories from "@/pages/Factories";
-import FactoryDetail from "@/pages/FactoryDetail";
-import Agenda from "@/pages/Agenda";
-import Commissions from "@/pages/Commissions";
-import Profile from "@/pages/Profile";
-import { ROUTES } from "@/types/routes";
+import { AuthProvider } from "@/presentation/contexts/AuthContext";
+import { ProtectedRoute } from "@/presentation/components/ProtectedRoute";
+import { AppLayout } from "@/presentation/components/AppLayout";
+import Login from "@/presentation/pages/Login";
+import SignUp from "@/presentation/pages/SignUp";
+import Home from "@/presentation/pages/Home";
+import Invoices from "@/presentation/pages/Invoices";
+import InvoiceDetail from "@/presentation/pages/InvoiceDetail";
+import Clients from "@/presentation/pages/Clients";
+import ClientDetail from "@/presentation/pages/ClientDetail";
+import Orders from "@/presentation/pages/Orders";
+import OrderDetail from "@/presentation/pages/OrderDetail";
+import CreateOrder from "@/presentation/pages/CreateOrder";
+import Factories from "@/presentation/pages/Factories";
+import FactoryDetail from "@/presentation/pages/FactoryDetail";
+import Agenda from "@/presentation/pages/Agenda";
+import Commissions from "@/presentation/pages/Commissions";
+import Profile from "@/presentation/pages/Profile";
+import { ROUTES } from "@/presentation/routes/routes";
 
 const queryClient = new QueryClient({
   defaultOptions: {

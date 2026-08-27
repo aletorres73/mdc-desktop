@@ -59,12 +59,12 @@ export default function Orders() {
   };
 
   return (
-    <div className="min-h-svh w-full min-w-0 bg-background p-4 sm:p-6">
-        <div className="mx-auto max-w-7xl space-y-6">
+    <div className="min-h-svh w-full min-w-0 bg-muted/30 p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
           {/* Header */}
           <header className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Pedidos</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Pedidos</h1>
               <p className="text-muted-foreground">
                 Gestión de órdenes de compra
               </p>
@@ -188,10 +188,10 @@ export default function Orders() {
                           <TableCell>{order.branch}</TableCell>
                           <TableCell>{formatDate(order.documentDate)}</TableCell>
                           <TableCell>
-                            <span className="capitalize">{order.trackingState}</span>
+                            <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium capitalize text-slate-700">{order.trackingState || "Sin estado"}</span>
                           </TableCell>
                           <TableCell>
-                            <span className="capitalize">{order.payState}</span>
+                            <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium capitalize text-amber-700">{order.payState || "Sin estado"}</span>
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             {formatCurrency(order.valueDocument)}

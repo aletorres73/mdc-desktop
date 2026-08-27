@@ -1,6 +1,6 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCollection, getDocument, addDocument, updateDocument, deleteDocument } from "@/lib/firebase/firestore";
+import { getCollection, getDocument, setDocument, updateDocument, deleteDocument } from "@/data/datasources/firestore";
 import type {
   RemoteResultClientModel,
   ClientModel,
@@ -124,27 +124,25 @@ export function useCreateClient() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (client: Omit<ClientModel, "clientId">) => {
+    mutationFn: async (client: ClientModel) => {
       if (!user?.uid) throw new Error("No user");
 
       const remoteClient: RemoteResultClientModel = {
-        "Cliente Id": "", // Will be set by Firestore
+        "Cliente Id": client.clientId,
         "Razón Social": client.clientName,
       };
 
-      const newId = await addDocument(
+      if (await getDocument(clientsPath(user.uid), client.clientId)) {
+        throw new Error("Ya existe un cliente con ese ID");
+      }
+
+      await setDocument(
         clientsPath(user.uid),
+        client.clientId,
         remoteClient as unknown as Record<string, unknown>
       );
 
-      // Update the document with the generated ID
-      await updateDocument(
-        clientsPath(user.uid),
-        newId,
-        { "Cliente Id": newId }
-      );
-
-      return { ...client, clientId: newId };
+      return client;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });

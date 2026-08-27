@@ -84,7 +84,7 @@ export default function FactoryDetail() {
             <div className="flex-1">
               <div className="flex items-center gap-3">
                 <Factory className="h-8 w-8 text-primary" />
-                <h1 className="text-2xl font-bold">{factory.name}</h1>
+                <h1 className="truncate text-2xl font-bold tracking-tight">{factory.name}</h1>
               </div>
               <p className="text-muted-foreground">
                 {factory.branchList.length} marcas • {factory.paymentType.length} condiciones
@@ -181,13 +181,13 @@ export default function FactoryDetail() {
               <CardContent>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead>
+                    <thead className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <tr className="border-b text-left text-muted-foreground">
                         <th className="pb-2 pr-4">Segmento</th>
                         <th className="pb-2 pr-4 text-right">Comisión</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-border/50">
                       {Object.entries(factory.segmentCommissions).map(([segment, commission]) => (
                         <tr key={segment} className="border-b last:border-0">
                           <td className="py-2 pr-4">{segment}</td>

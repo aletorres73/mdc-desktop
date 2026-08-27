@@ -37,6 +37,7 @@ export default function CreateOrder() {
   const [step, setStep] = useState<"client" | "details" | "articles">("client");
   const [selectedClient, setSelectedClient] = useState<ClientModel | null>(null);
   const [newClientName, setNewClientName] = useState("");
+  const [newClientId, setNewClientId] = useState("");
   const [isCreatingClient, setIsCreatingClient] = useState(false);
   const [showCreateClientDialog, setShowCreateClientDialog] = useState(false);
 
@@ -359,7 +360,7 @@ export default function CreateOrder() {
                 {articles.length > 0 && (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead>
+                      <thead className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         <tr className="border-b text-left text-muted-foreground">
                           <th className="pb-2 pr-4">Artículo</th>
                           <th className="pb-2 pr-4">Color</th>
@@ -368,7 +369,7 @@ export default function CreateOrder() {
                           <th className="pb-2"></th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-border/50">
                         {articles.map((article, i) => (
                           <tr key={i} className="border-b last:border-0">
                             <td className="py-2 pr-4">{article.name}</td>
@@ -407,6 +408,16 @@ export default function CreateOrder() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
+                  <Label htmlFor="newClientId">ID del cliente</Label>
+                  <Input
+                    id="newClientId"
+                    value={newClientId}
+                    onChange={(e) => setNewClientId(e.target.value)}
+                    placeholder="ID único"
+                    autoFocus
+                  />
+                </div>
+                <div>
                   <Label htmlFor="newClientName">Razón Social</Label>
                   <Input
                     id="newClientName"
@@ -423,12 +434,13 @@ export default function CreateOrder() {
                 </Button>
                 <Button
                   onClick={async () => {
-                    if (!newClientName.trim()) return;
+                    if (!newClientId.trim() || !newClientName.trim()) return;
                     setIsCreatingClient(true);
                     try {
-                      const newClient = await createClient.mutateAsync({ clientName: newClientName.trim() });
+                      const newClient = await createClient.mutateAsync({ clientId: newClientId.trim(), clientName: newClientName.trim() });
                       setSelectedClient(newClient);
                       setNewClientName("");
+                      setNewClientId("");
                       setShowCreateClientDialog(false);
                     } catch (err) {
                       console.error("Error creating client:", err);
@@ -436,7 +448,7 @@ export default function CreateOrder() {
                       setIsCreatingClient(false);
                     }
                   }}
-                  disabled={isCreatingClient || !newClientName.trim()}
+                  disabled={isCreatingClient || !newClientId.trim() || !newClientName.trim()}
                 >
                   {isCreatingClient ? (
                     <>

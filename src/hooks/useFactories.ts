@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCollection, addDocument, updateDocument, deleteDocument } from "@/lib/firebase/firestore";
+import { getCollection, addDocument, updateDocument, deleteDocument } from "@/data/datasources/firestore";
 import type {
   RemoteResultFactoryModel,
   FactoryModel,

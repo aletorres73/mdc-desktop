@@ -53,7 +53,7 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
         <SidebarHeader>
         <div className="flex h-16 items-center gap-2 px-4">
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">

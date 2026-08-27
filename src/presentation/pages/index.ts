@@ -1,0 +1,15 @@
+export { default as Home } from "./Home";
+export { default as Clients } from "./Clients";
+export { default as ClientDetail } from "./ClientDetail";
+export { default as Invoices } from "./Invoices";
+export { default as InvoiceDetail } from "./InvoiceDetail";
+export { default as Orders } from "./Orders";
+export { default as OrderDetail } from "./OrderDetail";
+export { default as CreateOrder } from "./CreateOrder";
+export { default as Factories } from "./Factories";
+export { default as FactoryDetail } from "./FactoryDetail";
+export { default as Commissions } from "./Commissions";
+export { default as Agenda } from "./Agenda";
+export { default as Login } from "./Login";
+export { default as SignUp } from "./SignUp";
+export { default as Profile } from "./Profile";

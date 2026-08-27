@@ -53,16 +53,16 @@ export default function Invoices() {
 
   // Status badge color mapping
   const getStatusBadge = (state: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      Pendiente: "default",
-      "Por vencer": "secondary",
-      Vencido: "destructive",
-      Cobrado: "default", // using default (green-ish) for paid
-      Cerrada: "outline",
-      Devuelta: "destructive",
-      Cancelado: "destructive",
+    const variants: Record<string, string> = {
+      Pendiente: "bg-amber-100 text-amber-700",
+      "Por vencer": "bg-yellow-100 text-yellow-700",
+      Vencido: "bg-red-100 text-red-700",
+      Cobrado: "bg-emerald-100 text-emerald-700",
+      Cerrada: "bg-slate-100 text-slate-700",
+      Devuelta: "bg-red-100 text-red-700",
+      Cancelado: "bg-red-100 text-red-700",
     };
-    return variants[state] || "default";
+    return variants[state] || "bg-slate-100 text-slate-700";
   };
 
   const formatCurrency = (value: number) => {
@@ -79,12 +79,12 @@ export default function Invoices() {
   };
 
   return (
-    <div className="min-h-svh w-full min-w-0 bg-background p-4 sm:p-6">
-        <div className="mx-auto max-w-7xl space-y-6">
+    <div className="min-h-svh w-full min-w-0 bg-muted/30 p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
           {/* Header */}
           <header className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Facturas</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Facturas</h1>
               <p className="text-muted-foreground">
                 Gestión de facturación y cobranzas
               </p>
@@ -231,7 +231,7 @@ export default function Invoices() {
                             <TableCell className="text-right font-medium">{formatCurrency(invoice.total)}</TableCell>
                             <TableCell className="text-right text-muted-foreground">{formatCurrency(invoice.rest)}</TableCell>
                             <TableCell>
-                              <Badge variant={getStatusBadge(invoice.stateBilling)}>
+                              <Badge className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadge(invoice.stateBilling)}`}>
                                 {invoice.stateBilling}
                               </Badge>
                             </TableCell>

@@ -13,8 +13,8 @@ import {
   updateUserPassword,
   reauthenticate as reauthenticateUser,
   onAuthStateChange,
-} from "@/lib/firebase/client";
-import { auth } from "@/lib/firebase/client";
+} from "@/data/datasources/client";
+import { auth } from "@/data/datasources/client";
 import type { User as FirebaseUser } from "firebase/auth";
 
 // ─── Types ───

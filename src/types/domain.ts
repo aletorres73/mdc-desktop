@@ -211,12 +211,32 @@ export interface InvoiceFilters {
 export interface ClientModel {
   clientId: string;
   clientName: string;
+  fantasyName?: string;
+  cuit?: string;
+  address?: string;
+  taxAddress?: string;
+  city?: string;
+  taxCity?: string;
+  deliveryTime?: string;
+  email?: string;
+  phone?: string;
+  contactName?: string;
 }
 
 // Remote Firestore format (matches RemoteResultClientModel)
 export interface RemoteResultClientModel {
   "Cliente Id": string;
   "Razón Social": string;
+  "Nombre fantasia"?: string;
+  CUIT?: string;
+  "Direccion Comercio"?: string;
+  "Direccion Fiscal"?: string;
+  "Localidad Comercio"?: string;
+  "Localidad Fiscal"?: string;
+  "Horario de entrega"?: string;
+  Email?: string;
+  Telefono?: string;
+  Contacto?: string;
 }
 
 // Extended client info (matches RemoteResultInfoClientModel)
@@ -239,6 +259,16 @@ export function toClientDomain(remote: RemoteResultClientModel): ClientModel {
   return {
     clientId: remote["Cliente Id"],
     clientName: remote["Razón Social"],
+    fantasyName: remote["Nombre fantasia"],
+    cuit: remote.CUIT,
+    address: remote["Direccion Comercio"],
+    taxAddress: remote["Direccion Fiscal"],
+    city: remote["Localidad Comercio"],
+    taxCity: remote["Localidad Fiscal"],
+    deliveryTime: remote["Horario de entrega"],
+    email: remote.Email,
+    phone: remote.Telefono,
+    contactName: remote.Contacto,
   };
 }
 

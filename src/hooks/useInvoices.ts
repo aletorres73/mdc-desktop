@@ -1,6 +1,6 @@
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCollection } from "@/lib/firebase/firestore";
+import { getCollection } from "@/data/datasources/firestore";
 import type {
   RemoteResultBillingModel,
   InvoiceFilters,

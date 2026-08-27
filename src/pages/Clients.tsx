@@ -29,6 +29,7 @@ export default function Clients() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<ClientFilters>({ search: "" });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newClientId, setNewClientId] = useState("");
   const [newClientName, setNewClientName] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -44,9 +45,10 @@ export default function Clients() {
   }, []);
 
   const handleCreate = async () => {
-    if (!newClientName.trim()) return;
+    if (!newClientId.trim() || !newClientName.trim()) return;
     try {
-      await createClient.mutateAsync({ clientName: newClientName.trim() });
+      await createClient.mutateAsync({ clientId: newClientId.trim(), clientName: newClientName.trim() });
+      setNewClientId("");
       setNewClientName("");
       setIsCreateDialogOpen(false);
     } catch (err) {
@@ -64,8 +66,8 @@ export default function Clients() {
   };
 
   return (
-    <main className="min-h-screen bg-background p-6">
-        <div className="mx-auto max-w-4xl space-y-6">
+    <main className="min-h-svh w-full bg-muted/30 p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
           {/* Header */}
           <header className="flex items-center justify-between">
             <div>
@@ -89,6 +91,16 @@ export default function Clients() {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
+                    <Label htmlFor="clientId">ID del cliente</Label>
+                    <Input
+                      id="clientId"
+                      value={newClientId}
+                      onChange={(e) => setNewClientId(e.target.value)}
+                      placeholder="ID único"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
                     <Label htmlFor="clientName">Razón Social</Label>
                     <Input
                       id="clientName"
@@ -103,7 +115,7 @@ export default function Clients() {
                   <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button onClick={handleCreate} disabled={createClient.isPending || !newClientName.trim()}>
+                  <Button onClick={handleCreate} disabled={createClient.isPending || !newClientId.trim() || !newClientName.trim()}>
                     {createClient.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

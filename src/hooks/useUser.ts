@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { getDocument } from "@/lib/firebase/firestore";
+import { getDocument } from "@/data/datasources/firestore";
 import type { UserModel } from "@/types/user";
 
 export function useUserProfile() {

@@ -21,8 +21,8 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-svh w-full min-w-0 bg-background p-4 sm:p-6">
-        <div className="mx-auto max-w-7xl space-y-6">
+    <div className="min-h-svh w-full min-w-0 bg-muted/30 p-4 sm:p-6">
+        <div className="mx-auto w-full max-w-7xl space-y-6">
           {/* Header */}
           <header className="flex items-center justify-between">
             <div>
@@ -39,7 +39,7 @@ export default function Home() {
               <Card key={stat.label}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">{stat.label}</CardTitle>
-                  <stat.icon className="h-4 w-4 text-muted-foreground" />
+                  <div className="rounded-full bg-emerald-600/10 p-2 text-emerald-600"><stat.icon className="h-4 w-4" /></div>
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stat.value}</div>

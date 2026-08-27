@@ -62,14 +62,14 @@ export default function Factories() {
   };
 
   return (
-    <div className="min-h-svh w-full min-w-0 bg-background p-4 sm:p-6">
-        <div className="mx-auto max-w-7xl space-y-6">
+    <div className="min-h-svh w-full min-w-0 bg-muted/30 p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
           {/* Header */}
           <header className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Factory className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-2xl font-bold">Fábricas</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Fábricas</h1>
                 <p className="text-muted-foreground">
                   Gestión de fábricas y marcas
                 </p>

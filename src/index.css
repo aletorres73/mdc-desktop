@@ -81,7 +81,13 @@
     --font-sans: 'Geist Variable', sans-serif;
   }
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
+  }
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+    outline-color: var(--ring);
   }
   body {
     @apply bg-background text-foreground;

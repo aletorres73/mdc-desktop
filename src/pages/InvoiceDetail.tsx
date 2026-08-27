@@ -122,7 +122,7 @@ export default function InvoiceDetail() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-2xl font-bold">Factura {invoice.billingNumber}</h1>
+              <h1 className="truncate text-2xl font-bold tracking-tight">Factura {invoice.billingNumber}</h1>
               <p className="text-muted-foreground">Orden: {invoice.orderId}</p>
             </div>
             <div className="ml-auto flex items-center gap-2">
@@ -225,7 +225,7 @@ export default function InvoiceDetail() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead>
+                    <thead className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       <tr className="border-b text-left text-muted-foreground">
                         <th className="pb-2 pr-4">Artículo</th>
                         <th className="pb-2 pr-4">Color</th>
@@ -233,7 +233,7 @@ export default function InvoiceDetail() {
                         <th className="pb-2 text-right">Pares</th>
                       </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-border/50">
                       {invoice.articles.map((article: ArticleModel, i: number) => (
                         <tr key={i} className="border-b last:border-0">
                           <td className="py-2 pr-4">{article.name}</td>

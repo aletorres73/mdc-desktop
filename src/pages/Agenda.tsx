@@ -27,12 +27,12 @@ export default function Agenda() {
   }, {});
 
   return (
-    <div className="min-h-svh w-full min-w-0 bg-background p-4 sm:p-6">
-        <div className="mx-auto max-w-5xl space-y-6">
+    <div className="min-h-svh w-full min-w-0 bg-muted/30 p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
           <header className="flex items-center gap-3">
             <CalendarDays className="h-7 w-7 text-primary" />
             <div>
-              <h1 className="text-2xl font-bold">Agenda</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
               <p className="text-muted-foreground">Fechas relevantes de tus pedidos</p>
             </div>
           </header>

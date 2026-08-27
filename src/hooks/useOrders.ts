@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCollection, getDocument } from "@/lib/firebase/firestore";
+import { getCollection, getDocument } from "@/data/datasources/firestore";
 import type {
   RemoteResultBuyOrder,
   RemoteResultOrder,

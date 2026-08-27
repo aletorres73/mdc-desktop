@@ -33,15 +33,12 @@ export interface TokenRefreshResponse {
   project_id: string;
 }
 
-// App User domain model — mirrors Kotlin AppUser (domain/model/AppUser.kt)
-// Tokens are NOT part of the domain model, they are stored separately.
 export interface AppUser {
   uid: string;
   email: string;
   displayName?: string;
 }
 
-// Auth session — tokens stored in tauri-plugin-store (like DesktopAuthRepository prefs)
 export interface AuthSession {
   idToken: string;
   refreshToken: string;

@@ -15,12 +15,12 @@ export default function Profile() {
   const isActive = profile?.isManuallyEnabled || (profile?.subscriptionExpiresAt ?? 0) > Date.now();
 
   return (
-    <div className="min-h-svh w-full min-w-0 bg-background p-4 sm:p-6">
-        <div className="mx-auto max-w-4xl space-y-6">
+    <div className="min-h-svh w-full min-w-0 bg-muted/30 p-4 sm:p-6">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
           <header className="flex items-center gap-3">
             <UserRound className="h-7 w-7 text-primary" />
             <div>
-              <h1 className="text-2xl font-bold">Perfil</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Perfil</h1>
               <p className="text-muted-foreground">Cuenta y estado de suscripción</p>
             </div>
           </header>
@@ -40,7 +40,7 @@ export default function Profile() {
               <Card>
                 <CardHeader><CardTitle>Suscripción</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
-                  <p className={isActive ? "text-green-600" : "text-destructive"}>{isActive ? "Activa" : "Inactiva"}</p>
+                  <p><span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${isActive ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{isActive ? "Activa" : "Inactiva"}</span></p>
                   <p><span className="text-muted-foreground">Vencimiento:</span> {formatDate(profile?.subscriptionExpiresAt ?? 0)}</p>
                   {profile?.isManuallyEnabled && <p className="text-sm text-muted-foreground">Habilitación manual</p>}
                 </CardContent>

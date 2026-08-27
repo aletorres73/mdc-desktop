@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { getCollection } from "@/lib/firebase/firestore";
+import { getCollection } from "@/data/datasources/firestore";
 import type { RemoteInitConfig } from "@/types/domain";
 
 // Mirrors Kotlin InitService — loads app config from "appConfig/android/releases"
