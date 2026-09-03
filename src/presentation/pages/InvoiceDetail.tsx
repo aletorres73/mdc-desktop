@@ -4,16 +4,16 @@ import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useInvoice } from "../hooks/useInvoices";
 import { PageShell, PageHeader, KpiCard, DataTableShell, DataTableRow, DataTableCell, StatusBadge } from "../components/shared";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
+import { Button } from "@/presentation/components/ui/button";
+import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { ArrowLeft, AlertCircle, FileText, Share2, Wallet } from "lucide-react";
 import type { ArticleModel, BillingComments } from "@/domain/entities/invoice";
 import { toFormattedDate, toPrint } from "@/domain/entities/formatters";
 import { shareText } from "../utils/shareUtils";
 import { ReportGenerator } from "@/domain/logic/reportGenerator";
 import { ROUTES } from "../routes/routes";
-
+  
 export default function InvoiceDetail() {
   const { invoiceNumber } = useParams<{ invoiceNumber: string }>();
   const { data: invoice, isLoading, error } = useInvoice(invoiceNumber ?? null);

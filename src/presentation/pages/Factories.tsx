@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useFactories, useDeleteFactory } from "../hooks/useFactories";
 import type { FactoryModel } from "@/domain/entities/factory";
 import { PageShell, PageHeader, DataTableShell, DataTableRow, DataTableCell, DataState } from "../components/shared";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/presentation/components/ui/input";
+import { Button } from "@/presentation/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { Search, Plus, Trash2, Edit, Factory, RefreshCw } from "lucide-react";
 import { FactoryForm } from "../components/FactoryForm";
 

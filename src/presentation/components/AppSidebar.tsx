@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarHeader,
   SidebarFooter,
-} from "@/components/ui/sidebar";
+} from "@/presentation/components/ui/sidebar";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -31,9 +31,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
+} from "@/presentation/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/presentation/components/ui/avatar";
+import { Separator } from "@/presentation/components/ui/separator";
 import { ROUTES } from "../routes/routes";
 
 const NAV_ITEMS = [

@@ -1,7 +1,7 @@
 import { useUserProfile } from "../hooks/useUser";
 import { useAuth } from "../contexts/AuthContext";
 import { PageShell, PageHeader, KpiCard, DataState, StatusBadge, DataTableShell, DataTableRow, DataTableCell } from "../components/shared";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { UserRound, ShieldCheck, Calendar } from "lucide-react";
 import { toFormattedDate, toPrint } from "@/domain/entities/formatters";
 

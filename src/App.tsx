@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/presentation/components/ui/tooltip";
 import { AuthProvider } from "@/presentation/contexts/AuthContext";
 import { ProtectedRoute } from "@/presentation/components/ProtectedRoute";
 import { AppLayout } from "@/presentation/components/AppLayout";

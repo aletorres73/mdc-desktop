@@ -1,7 +1,7 @@
 import { useOrders } from "../hooks/useOrders";
 import type { OrderModel } from "@/domain/entities/order";
 import { PageShell, PageHeader, DataState, StatusBadge } from "../components/shared";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { CalendarDays } from "lucide-react";
 
 function formatDate(timestamp: number) {

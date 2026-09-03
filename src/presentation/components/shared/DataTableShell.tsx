@@ -1,5 +1,5 @@
 import React from "react";
-import { Card } from "@/components/ui/card";
+import { Card } from "@/presentation/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface DataTableShellProps {

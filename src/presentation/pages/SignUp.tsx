@@ -2,11 +2,11 @@ import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { ROUTES } from "../routes/routes";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/presentation/components/ui/button";
+import { Input } from "@/presentation/components/ui/input";
+import { Label } from "@/presentation/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/presentation/components/ui/card";
+import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
 
 export default function SignUp() {
   const [displayName, setDisplayName] = useState("");

@@ -6,24 +6,24 @@ import { useAllClients } from "../hooks/useClients";
 import { useFactoriesForOrders, useCreateBuyOrder } from "../hooks/useOrders";
 import { useCreateClient } from "../hooks/useClients";
 import { PageShell, PageHeader, DataTableShell, DataTableRow, DataTableCell } from "../components/shared";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
+import { Button } from "@/presentation/components/ui/button";
+import { Input } from "@/presentation/components/ui/input";
+import { Label } from "@/presentation/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/presentation/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from "@/presentation/components/ui/dialog";
 import { Plus, Loader2, Trash2, Package } from "lucide-react";
 import type { ClientModel } from "@/domain/entities/client";
 import type { BuyOrderModel } from "@/domain/entities/order";

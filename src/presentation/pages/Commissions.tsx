@@ -1,6 +1,6 @@
 import { useCommissions } from "../hooks/useCommissions";
 import { PageShell, PageHeader, KpiCard, DataTableShell, DataTableRow, DataTableCell, DataState } from "../components/shared";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { CreditCard, DollarSign, Factory, TrendingUp } from "lucide-react";
 import { toPrint } from "@/domain/entities/formatters";
 

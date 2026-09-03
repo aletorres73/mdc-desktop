@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useCreateFactory, useUpdateFactory } from "@/hooks";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/presentation/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
+import { Input } from "@/presentation/components/ui/input";
+import { Label } from "@/presentation/components/ui/label";
+import { Button } from "@/presentation/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { Plus, Trash2, Loader2, Package } from "lucide-react";
 import type { FactoryModel, PaymentCondition } from "@/types/domain";
 

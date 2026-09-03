@@ -3,7 +3,7 @@ import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@/components/ui/sidebar";
+} from "@/presentation/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 
 export function AppLayout() {

@@ -1,9 +1,9 @@
 import React from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/presentation/components/ui/alert";
+import { Card, CardContent } from "@/presentation/components/ui/card";
+import { Skeleton } from "@/presentation/components/ui/skeleton";
 import { AlertCircle, Inbox } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/presentation/components/ui/button";
 
 interface DataStateProps {
   isLoading?: boolean;

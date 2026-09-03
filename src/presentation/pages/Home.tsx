@@ -1,7 +1,7 @@
 import { useAuth } from "../contexts/AuthContext";
 import { useHomeStats } from "../hooks/useHomeStats";
 import { PageShell, PageHeader, KpiCard, DataState } from "../components/shared";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { Package, TrendingUp, Factory, LayoutDashboard } from "lucide-react";
 
 export default function Home() {

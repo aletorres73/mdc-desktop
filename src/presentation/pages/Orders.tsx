@@ -10,10 +10,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@/presentation/components/ui/select";
+import { Input } from "@/presentation/components/ui/input";
+import { Button } from "@/presentation/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { Search, Package, RefreshCw } from "lucide-react";
 import { toFormattedDate, toPrint, toMoneyDouble } from "@/domain/entities/formatters";
 
