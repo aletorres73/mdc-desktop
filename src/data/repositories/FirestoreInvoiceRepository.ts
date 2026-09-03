@@ -65,8 +65,32 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
   }
 
   async updateInvoice(uid: string, billingNumber: string, data: Partial<BillingModel>): Promise<void> {
-    // If updating via domain fields, convert if necessary or pass directly if keys match
-    await updateDocument(billingsPath(uid), billingNumber, data as Record<string, unknown>);
+    const remoteData = toBillingRemote({
+      ...data,
+      billingNumber: data.billingNumber ?? billingNumber,
+      orderId: data.orderId ?? "",
+      type: data.type ?? "Factura",
+      total: data.total ?? 0,
+      loadDate: data.loadDate ?? Date.now(),
+      deliveryDate: data.deliveryDate ?? 0,
+      payDate: data.payDate ?? 0,
+      articles: data.articles ?? [],
+      paymentCondition: data.paymentCondition ?? "",
+      expectedDiscount: data.expectedDiscount ?? 0,
+      toPay: data.toPay ?? 0,
+      payed: data.payed ?? 0,
+      rest: data.rest ?? 0,
+      stateBilling: data.stateBilling ?? "Pendiente",
+      clientId: data.clientId ?? "",
+      brand: data.brand ?? "",
+      branch: data.branch ?? "",
+      comments: data.comments ?? [],
+      clientName: data.clientName ?? "",
+      timeStamp: data.timeStamp ?? Date.now(),
+      payments: data.payments ?? [],
+    } as BillingModel);
+
+    await updateDocument(billingsPath(uid), billingNumber, remoteData as unknown as Record<string, unknown>);
   }
 
   async createInvoice(uid: string, billing: BillingModel): Promise<BillingModel> {

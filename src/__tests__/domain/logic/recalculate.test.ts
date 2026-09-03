@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { recalculateBilling } from "../../../domain/logic/recalculate";
+import {
+  recalculateBilling,
+  updateInvoiceDetails,
+  applyInvoicePayment,
+  addInvoiceComment,
+  updateInvoicePayment,
+  deleteInvoicePayment,
+  reconcileInvoicePayment,
+} from "../../../domain/logic/recalculate";
 import { FIXTURES, getPastDate, getFutureDate, createInvoice, createPaymentCondition } from "../../fixtures";
 
 describe("recalculateBilling", () => {
@@ -292,6 +300,145 @@ describe("recalculateBilling", () => {
 
       // Dependerá del cálculo exacto en la función
       expect(result.stateBilling).toMatch(/Pendiente|Por vencer/);
+    });
+  });
+
+  describe("Pagos y comentarios", () => {
+    it("debe registrar un pago real y recalcular saldo y estado", () => {
+      const invoice = createInvoice({
+        total: 10000,
+        toPay: 10000,
+        payed: 0,
+        rest: 10000,
+        stateBilling: "Pendiente",
+      });
+
+      const result = applyInvoicePayment(invoice, {
+        amount: 2500,
+        type: "real",
+        status: "imputado",
+        note: "Pago realizado por transferencia",
+      });
+
+      expect(result.payed).toBe(2500);
+      expect(result.rest).toBe(7500);
+      expect(result.stateBilling).toBe("Pendiente");
+      expect(result.comments[result.comments.length - 1]?.comments).toContain("Pago realizado por transferencia");
+    });
+
+    it("debe aplicar un descuento virtual y ajustar el monto a cobrar", () => {
+      const invoice = createInvoice({
+        total: 8000,
+        toPay: 8000,
+        payed: 0,
+        rest: 8000,
+        stateBilling: "Pendiente",
+      });
+
+      const result = applyInvoicePayment(invoice, {
+        amount: 400,
+        type: "virtual",
+        status: "conciliado",
+        note: "Pronto pago aplicado",
+        virtualType: "pronto-pago",
+      });
+
+      expect(result.expectedDiscount).toBeGreaterThan(0);
+      expect(result.toPay).toBeLessThan(8000);
+      expect(result.stateBilling).toBe("Pendiente");
+    });
+
+    it("debe permitir actualizar fecha de recepción y agregar comentarios", () => {
+      const invoice = createInvoice({
+        deliveryDate: Date.now() - 2 * 24 * 60 * 60 * 1000,
+        comments: [],
+      });
+
+      const updated = updateInvoiceDetails(invoice, {
+        deliveryDate: Date.now() - 1 * 24 * 60 * 60 * 1000,
+        comments: [{ comments: "Se corrigió la fecha de recepción", date: Date.now() }],
+      });
+
+      const withComment = addInvoiceComment(updated, "Comentario adicional de seguimiento");
+
+      expect(updated.deliveryDate).toBeGreaterThan(invoice.deliveryDate);
+      expect(withComment.comments).toHaveLength(2);
+      expect(withComment.comments[1].comments).toContain("seguimiento");
+    });
+
+    it("debe editar un pago existente y conservar el saldo recalculado", () => {
+      const invoice = applyInvoicePayment(
+        createInvoice({
+          total: 10000,
+          toPay: 10000,
+          payed: 0,
+          rest: 10000,
+          comments: [],
+        }),
+        {
+          amount: 2000,
+          type: "real",
+          status: "imputado",
+          note: "Pago inicial",
+        }
+      );
+
+      const updated = updateInvoicePayment(invoice, 0, {
+        amount: 3500,
+        status: "conciliado",
+        note: "Pago ajustado",
+      });
+
+      expect(updated.payed).toBe(3500);
+      expect(updated.rest).toBe(6500);
+      expect(updated.payments?.[0]?.status).toBe("conciliado");
+    });
+
+    it("debe eliminar un pago y reflejar el saldo actualizado", () => {
+      const invoice = applyInvoicePayment(
+        createInvoice({
+          total: 10000,
+          toPay: 10000,
+          payed: 0,
+          rest: 10000,
+          comments: [],
+        }),
+        {
+          amount: 3000,
+          type: "real",
+          status: "imputado",
+          note: "Pago a borrar",
+        }
+      );
+
+      const updated = deleteInvoicePayment(invoice, 0);
+
+      expect(updated.payments).toHaveLength(0);
+      expect(updated.payed).toBe(0);
+      expect(updated.rest).toBe(10000);
+    });
+
+    it("debe conciliar un pago pendiente y mantener el estado en factura", () => {
+      const invoice = applyInvoicePayment(
+        createInvoice({
+          total: 6000,
+          toPay: 6000,
+          payed: 0,
+          rest: 6000,
+          comments: [],
+        }),
+        {
+          amount: 2000,
+          type: "real",
+          status: "pendiente",
+          note: "Pago pendiente",
+        }
+      );
+
+      const reconciled = reconcileInvoicePayment(invoice, 0);
+
+      expect(reconciled.payments?.[0]?.status).toBe("conciliado");
+      expect(reconciled.rest).toBe(4000);
     });
   });
 });

@@ -10,6 +10,16 @@ export interface BillingComments {
   date: number;
 }
 
+export interface BillingPayment {
+  id: string;
+  amount: number;
+  type: "real" | "virtual";
+  status: "pendiente" | "imputado" | "conciliado";
+  note?: string;
+  virtualType?: string;
+  date: number;
+}
+
 export interface BillingModel {
   billingNumber: string;
   orderId: string;
@@ -31,6 +41,7 @@ export interface BillingModel {
   comments: BillingComments[];
   clientName: string;
   timeStamp: number;
+  payments?: BillingPayment[];
 }
 
 export interface InvoiceFilters {

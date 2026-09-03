@@ -19,6 +19,17 @@ export interface RemoteResultBillingModel {
   Comentarios: RemoteBillingComments[];
   "Razon Social": string;
   Timestamp: number;
+  Pagos?: BillingPaymentRemote[];
+}
+
+export interface BillingPaymentRemote {
+  id: string;
+  amount: number;
+  type: "real" | "virtual";
+  status: "pendiente" | "imputado" | "conciliado";
+  note?: string;
+  virtualType?: string;
+  date: number;
 }
 
 export interface RemoteArticle {

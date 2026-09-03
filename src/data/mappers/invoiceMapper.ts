@@ -31,6 +31,15 @@ export function toBillingDomain(remote: RemoteResultBillingModel): BillingModel 
     })),
     clientName: remote["Razon Social"],
     timeStamp: remote.Timestamp,
+    payments: (remote.Pagos ?? []).map((payment) => ({
+      id: payment.id,
+      amount: Number(payment.amount) || 0,
+      type: payment.type,
+      status: payment.status,
+      note: payment.note,
+      virtualType: payment.virtualType,
+      date: payment.date,
+    })),
   };
 }
 
@@ -64,5 +73,14 @@ export function toBillingRemote(domain: BillingModel): RemoteResultBillingModel 
     })),
     "Razon Social": domain.clientName,
     Timestamp: domain.timeStamp,
+    Pagos: (domain.payments ?? []).map((payment) => ({
+      id: payment.id,
+      amount: payment.amount,
+      type: payment.type,
+      status: payment.status,
+      note: payment.note,
+      virtualType: payment.virtualType,
+      date: payment.date,
+    })),
   };
 }
