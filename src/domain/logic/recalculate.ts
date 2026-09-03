@@ -5,14 +5,19 @@ export function recalculateBilling(
   billing: BillingModel,
   condition?: PaymentCondition | null
 ): BillingModel {
-  const toPayValue = billing.total;
+  // Use toPay if available (already includes discount), otherwise use total
+  const toPayValue = billing.toPay || billing.total;
   const restValue = toPayValue - billing.payed;
 
   let newPayDate = billing.payDate;
 
+  // Only calculate payDate if deliveryDate is set and condition is provided
   if (billing.deliveryDate !== 0 && condition) {
     const millisInDay = 86400000;
     newPayDate = billing.deliveryDate + condition.expiration * millisInDay;
+  } else if (billing.deliveryDate === 0) {
+    // Keep payDate as 0 when no delivery date is set
+    newPayDate = 0;
   } else if (!billing.paymentCondition && !condition) {
     newPayDate = 0;
   }

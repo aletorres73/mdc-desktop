@@ -22,6 +22,7 @@ export interface RemoteArticleOrderModel {
   "Color": string;
   "Entregados": string;
   "Pares": string;
+  "Importe"?: string; // Precio unitario
 }
 
 export interface RemoteResultOrder {

@@ -20,6 +20,7 @@ import FactoryDetail from "@/presentation/pages/FactoryDetail";
 import Agenda from "@/presentation/pages/Agenda";
 import Commissions from "@/presentation/pages/Commissions";
 import Profile from "@/presentation/pages/Profile";
+import Subscription from "@/presentation/pages/Subscription";
 import { ROUTES } from "@/presentation/routes/routes";
 
 const queryClient = new QueryClient({
@@ -45,7 +46,12 @@ function App() {
 
               {/* Protected routes */}
               <Route element={<ProtectedRoute />}>
+                <Route path={ROUTES.SUBSCRIPTION} element={<Subscription />} />
                 <Route element={<AppLayout />}>
+                  <Route path={ROUTES.PROFILE} element={<Profile />} />
+                </Route>
+                <Route element={<ProtectedRoute requiresSubscription />}>
+                  <Route element={<AppLayout />}>
                 <Route path={ROUTES.HOME} element={<Home />} />
                 <Route path={ROUTES.INVOICES} element={<Invoices />} />
                 <Route path={ROUTES.INVOICE_DETAIL} element={<InvoiceDetail />} />
@@ -59,7 +65,7 @@ function App() {
                 {/* Phase 4+: add more routes here */}
                 <Route path={ROUTES.AGENDA} element={<Agenda />} />
                 <Route path={ROUTES.COMMISSIONS} element={<Commissions />} />
-                <Route path={ROUTES.PROFILE} element={<Profile />} />
+                  </Route>
                 </Route>
               </Route>
 

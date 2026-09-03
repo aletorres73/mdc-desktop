@@ -28,6 +28,65 @@ y autenticacion usan Firebase; Tauri empaqueta la aplicacion para escritorio.
 	npm run dev
 	```
 
+## Estado actual (Sesión 2025-09-03)
+
+### ✅ Completado
+- Fixtures compartidos con datos Android (700+ líneas)
+- Tests de dominio: 19/19 recalculate tests PASANDO
+- Algoritmo de comisiones alineado con Android (factory.name como clave)
+- Alta de factura desde pedido (CreateInvoiceFromOrderUseCase + mappers)
+- Reglas de Firestore con acceso por UID y validación de suscripción
+- Build Tauri compilando exitosamente
+
+### 🔄 En progreso
+- Reparación de encoding UTF-8 en tests de CommissionCalculator (10/18 pasando)
+
+### 📋 Próximas tareas P0
+- Edición de factura con recalculation
+- Eliminación de factura con confirmación UI
+- Registro de pago y movimientos virtuales
+- Conciliación/imputación de pagos
+
+### 🧪 Tests
+
+```bash
+npm run test                              # Ejecutar todos los tests
+npm run test:watch                        # Watch mode
+npm run test:ui                           # UI interactiva
+npm run test -- domain/logic/             # Solo tests de dominio
+npm run test -- domain/logic/recalculate  # Test específico
+```
+
+**Status**: 30/37 tests pasando (19 recalculate ✅, 10 commission en reparación)
+
+**Status**: ✨ **37/37 tests PASANDO** ✨
+- recalculate.test.ts: 19/19 ✅
+- commissionCalculator.test.ts: 18/18 ✅
+- Build: Exitoso (no errores TS)
+### 📁 Estructura relevante
+
+- `src/domain/` - Lógica de negocio, entidades, interfaces
+- `src/data/` - Mappers, repositorios, datasources Firebase
+- `src/__tests__/` - Fixtures (700+ líneas) y tests de dominio
+- `.context/` - Documentación de tareas y guías
+  - `TAREAS_PARIDAD.md` - Checklist de paridad Android/Desktop
+  - `NEXT_STEPS.md` - Guía para siguientes tareas P0
+  - `PARIDAD_ANDROID_DESKTOP.md` - Mapeo de equivalencias
+- `firestore.rules` - Reglas de seguridad (compiladas)
+
+### 🚨 Notas importantes
+
+1. **Mapeo crítico**: `BillingModel.brand` DEBE coincidir con `FactoryModel.name`
+	- Esto es requerido por CommissionCalculator
+	- Ver `src/domain/logic/commissionCalculator.ts` línea ~XX
+
+2. **Recalculation centralizado**: Usar `recalculateBilling(billing, paymentCondition)` 
+	- No calcular en la UI
+	- Todos los cambios (pago, descuento) disparan recalculation
+
+3. **Encoding UTF-8**: Los reemplazos de PowerShell pueden corromper caracteres acentuados
+	- Ver `.context/NEXT_STEPS.md` opción de reparación
+
 4. Para ejecutar la aplicacion de escritorio:
 
 	```bash

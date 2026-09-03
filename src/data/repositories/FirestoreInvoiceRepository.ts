@@ -1,8 +1,8 @@
 import type { IInvoiceRepository, FetchInvoiceOptions } from "@/domain/repositories/IInvoiceRepository";
 import type { BillingModel, InvoicePageDomain } from "@/domain/entities/invoice";
-import { getCollection, updateDocument } from "../datasources";
+import { getCollection, updateDocument, setDocument, deleteDocument } from "../datasources";
 import type { RemoteResultBillingModel } from "../remote/remoteResultInvoice";
-import { toBillingDomain } from "../mappers/invoiceMapper";
+import { toBillingDomain, toBillingRemote } from "../mappers/invoiceMapper";
 
 function billingsPath(uid: string): string {
   return `users/${uid}/allBillings`;
@@ -67,5 +67,20 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
   async updateInvoice(uid: string, billingNumber: string, data: Partial<BillingModel>): Promise<void> {
     // If updating via domain fields, convert if necessary or pass directly if keys match
     await updateDocument(billingsPath(uid), billingNumber, data as Record<string, unknown>);
+  }
+
+  async createInvoice(uid: string, billing: BillingModel): Promise<BillingModel> {
+    // Convert domain model to remote model
+    const remoteData = toBillingRemote(billing);
+    
+    // Save to Firestore using billingNumber as document ID
+    await setDocument(billingsPath(uid), billing.billingNumber, remoteData as unknown as Record<string, unknown>);
+    
+    // Return the created billing with the ID
+    return billing;
+  }
+
+  async deleteInvoice(uid: string, billingNumber: string): Promise<void> {
+    await deleteDocument(billingsPath(uid), billingNumber);
   }
 }

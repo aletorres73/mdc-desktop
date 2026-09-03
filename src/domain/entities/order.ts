@@ -3,6 +3,7 @@ export interface ArticleOrderModel {
   color: string;
   delivered: number;
   pairs: number;
+  value?: number; // Precio unitario del artículo
 }
 
 export interface BuyOrderModel {

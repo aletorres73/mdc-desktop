@@ -12,5 +12,7 @@ export interface IInvoiceRepository {
   fetchPage(uid: string, options: FetchInvoiceOptions): Promise<InvoicePageDomain>;
   getInvoiceByNumber(uid: string, invoiceNumber: string): Promise<BillingModel | null>;
   getAllBillings(uid: string): Promise<BillingModel[]>;
+  createInvoice(uid: string, billing: BillingModel): Promise<BillingModel>;
   updateInvoice(uid: string, billingNumber: string, data: Partial<BillingModel>): Promise<void>;
+  deleteInvoice(uid: string, billingNumber: string): Promise<void>;
 }

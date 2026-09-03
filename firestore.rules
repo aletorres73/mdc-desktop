@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper para verificar autenticación
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper para verificar que el UID coincide
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    // Helper para verificar que la suscripción está activa
+    function isSubscriptionActive(uid) {
+      let userDoc = get(/databases/$(database)/documents/users/$(uid));
+      return userDoc.exists && (
+        userDoc.data.isManuallyEnabled == true ||
+        userDoc.data.subscriptionExpiresAt > now
+      );
+    }
+
+    // Profil del usuario - ver y editar solo el propio
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+
+      // Clientes - acceso solo si suscripción activa
+      match /clients/{clientId} {
+        allow read: if isOwner(uid) && isSubscriptionActive(uid);
+        allow create, update, delete: if isOwner(uid) && isSubscriptionActive(uid);
+      }
+
+      // Órdenes de compra - acceso solo si suscripción activa
+      match /clients/{clientId}/buyOrders/{orderId} {
+        allow read: if isOwner(uid) && isSubscriptionActive(uid);
+        allow create, update, delete: if isOwner(uid) && isSubscriptionActive(uid);
+      }
+
+      // Órdenes consolidadas - acceso solo si suscripción activa
+      match /Orders/{orderId} {
+        allow read: if isOwner(uid) && isSubscriptionActive(uid);
+        allow create, update, delete: if isOwner(uid) && isSubscriptionActive(uid);
+      }
+
+      // Facturas/Billings - acceso solo si suscripción activa
+      match /allBillings/{billingId} {
+        allow read: if isOwner(uid) && isSubscriptionActive(uid);
+        allow create, update, delete: if isOwner(uid) && isSubscriptionActive(uid);
+      }
+
+      // Fábricas - acceso solo si suscripción activa
+      match /factories/{factoryId} {
+        allow read: if isOwner(uid) && isSubscriptionActive(uid);
+        allow create, update, delete: if isOwner(uid) && isSubscriptionActive(uid);
+      }
+    }
+
+    // Configuración global de la app - acceso de lectura para todos
+    match /appConfig/{document=**} {
+      allow read: if isAuthenticated();
+      // Solo admin puede escribir (no configurado aquí - usar Firebase Console)
+    }
+
+    // Denegar todo lo demás
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
