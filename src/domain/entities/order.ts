@@ -45,9 +45,9 @@ export interface OrderModel {
   payedAmount: string;
   payDifference: string;
   orders: string;
-  documents: string;
-  checked: string;
-  calendar: string;
+  documents: string | null;
+  checked: string | null;
+  calendar: string | null;
   date: number;
 }
 

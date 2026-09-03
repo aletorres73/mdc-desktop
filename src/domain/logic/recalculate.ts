@@ -144,17 +144,18 @@ export function applyInvoicePayment(
   payment: InvoicePaymentInput
 ): BillingModel {
   const amount = Math.max(0, Number(payment.amount) || 0);
+  const newEntry: InvoicePaymentEntry = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    amount,
+    type: payment.type ?? "real",
+    status: payment.status ?? "imputado",
+    date: Date.now(),
+    ...(payment.note !== undefined ? { note: payment.note } : {}),
+    ...(payment.virtualType !== undefined ? { virtualType: payment.virtualType } : {}),
+  };
   const paymentEntries: InvoicePaymentEntry[] = [
-    ...(billing as BillingModel & { payments?: InvoicePaymentEntry[] }).payments ?? [],
-    {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-      amount,
-      type: payment.type ?? "real",
-      status: payment.status ?? "imputado",
-      note: payment.note,
-      virtualType: payment.virtualType,
-      date: Date.now(),
-    },
+    ...((billing as BillingModel & { payments?: InvoicePaymentEntry[] }).payments ?? []),
+    newEntry,
   ];
 
   const nextComments = payment.note?.trim()

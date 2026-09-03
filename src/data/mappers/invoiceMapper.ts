@@ -36,8 +36,8 @@ export function toBillingDomain(remote: RemoteResultBillingModel): BillingModel 
       amount: Number(payment.amount) || 0,
       type: payment.type,
       status: payment.status,
-      note: payment.note,
-      virtualType: payment.virtualType,
+      ...(payment.note !== undefined ? { note: payment.note } : {}),
+      ...(payment.virtualType !== undefined ? { virtualType: payment.virtualType } : {}),
       date: payment.date,
     })),
   };
@@ -78,8 +78,8 @@ export function toBillingRemote(domain: BillingModel): RemoteResultBillingModel 
       amount: payment.amount,
       type: payment.type,
       status: payment.status,
-      note: payment.note,
-      virtualType: payment.virtualType,
+      ...(payment.note !== undefined ? { note: payment.note } : {}),
+      ...(payment.virtualType !== undefined ? { virtualType: payment.virtualType } : {}),
       date: payment.date,
     })),
   };

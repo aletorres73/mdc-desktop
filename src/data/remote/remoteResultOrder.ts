@@ -45,8 +45,8 @@ export interface RemoteResultOrder {
   "Monto cobrado": string;
   "Diferencia": string;
   "Pedidos": string;
-  "Remitos/ Facturas": string;
-  "Comprobantes": string;
-  "Calendario": string;
+  "Remitos/ Facturas"?: string | null;
+  "Comprobantes"?: string | null;
+  "Calendario"?: string | null;
   "Plazo": number;
 }

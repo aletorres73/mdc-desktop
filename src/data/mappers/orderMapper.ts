@@ -76,9 +76,9 @@ export function toOrderDomain(remote: RemoteResultOrder): OrderModel {
     payedAmount: remote["Monto cobrado"],
     payDifference: remote["Diferencia"],
     orders: remote["Pedidos"],
-    documents: remote["Remitos/ Facturas"],
-    checked: remote["Comprobantes"],
-    calendar: remote["Calendario"],
+    documents: remote["Remitos/ Facturas"] ?? null,
+    checked: remote["Comprobantes"] ?? null,
+    calendar: remote["Calendario"] ?? null,
     date: remote["Plazo"],
   };
 }

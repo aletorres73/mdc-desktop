@@ -44,6 +44,21 @@ function normalizeDocument<T>(id: string, data: DocumentData): T {
   } as T;
 }
 
+// Firestore rejects `undefined` values (including nested in arrays/objects); strip them before writing.
+function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefined(item)) as unknown as T;
+  }
+  if (value && typeof value === "object" && !(value instanceof Timestamp) && !(value instanceof Date)) {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, stripUndefined(v)])
+    ) as T;
+  }
+  return value;
+}
+
 export async function getDocument<T = DocumentData>(
   collectionName: string,
   docId: string
@@ -61,7 +76,7 @@ export async function setDocument(
   data: Record<string, unknown>
 ): Promise<void> {
   const docRef = doc(db, collectionName, docId);
-  await setDoc(docRef, data);
+  await setDoc(docRef, stripUndefined(data));
 }
 
 export async function updateDocument(
@@ -70,7 +85,7 @@ export async function updateDocument(
   data: Record<string, unknown>
 ): Promise<void> {
   const docRef = doc(db, collectionName, docId);
-  await updateDoc(docRef, data as UpdateData<DocumentData>);
+  await updateDoc(docRef, stripUndefined(data) as UpdateData<DocumentData>);
 }
 
 export async function deleteDocument(
@@ -86,7 +101,7 @@ export async function addDocument(
   data: Record<string, unknown>
 ): Promise<string> {
   const colRef = collection(db, collectionName);
-  const docRef = await addDoc(colRef, data);
+  const docRef = await addDoc(colRef, stripUndefined(data));
   return docRef.id;
 }
 
