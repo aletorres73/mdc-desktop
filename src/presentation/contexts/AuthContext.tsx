@@ -15,6 +15,7 @@ interface AuthContextValue {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName?: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
   reauthenticate: (password: string) => Promise<void>;
@@ -47,6 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const resetPassword = useCallback(async (email: string) => {
+    await container.authUseCase.sendPasswordReset(email);
+  }, []);
+
   const logout = useCallback(async () => {
     await container.authUseCase.signOut();
   }, []);
@@ -72,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         login,
         register,
+        resetPassword,
         logout,
         updatePassword,
         reauthenticate,

@@ -6,6 +6,7 @@ import { ProtectedRoute } from "@/presentation/components/ProtectedRoute";
 import { AppLayout } from "@/presentation/components/AppLayout";
 import Login from "@/presentation/pages/Login";
 import SignUp from "@/presentation/pages/SignUp";
+import ForgotPassword from "@/presentation/pages/ForgotPassword";
 import Home from "@/presentation/pages/Home";
 import Invoices from "@/presentation/pages/Invoices";
 import InvoiceDetail from "@/presentation/pages/InvoiceDetail";
@@ -40,6 +41,7 @@ function App() {
               {/* Public routes */}
               <Route path={ROUTES.LOGIN} element={<Login />} />
               <Route path={ROUTES.SIGN_UP} element={<SignUp />} />
+              <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
 
               {/* Protected routes */}
               <Route element={<ProtectedRoute />}>

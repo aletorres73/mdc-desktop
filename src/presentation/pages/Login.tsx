@@ -87,6 +87,12 @@ export default function Login() {
               {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
             </Button>
 
+            <div className="text-center text-sm">
+              <Link to={ROUTES.FORGOT_PASSWORD} className="text-primary underline hover:text-primary/80 font-medium">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
+
             <div className="text-center text-sm text-muted-foreground">
               ¿No tenés cuenta?{" "}
               <Link to={ROUTES.SIGN_UP} className="text-primary underline hover:text-primary/80 font-medium">
