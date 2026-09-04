@@ -1,5 +1,5 @@
-import { getCollection, getDocument, setDocument, updateDocument, deleteDocument } from "@/data/datasources/firestore";
-import { toFactoryDomain, toFactoryRemote } from "@/data/mappers/factoryMapper";
+import { getCollection, getDocument, setDocument, updateDocument, deleteDocument, where } from "@/data/datasources/firestore";
+import { toFactoryDomain, toFactoryRemote, toFactoryRemotePartial } from "@/data/mappers/factoryMapper";
 import type { RemoteResultFactoryModel } from "@/data/remote/remoteFactory";
 import type { IFactoryRepository } from "@/domain/repositories/IFactoryRepository";
 import type { FactoryModel } from "@/domain/entities/factory";
@@ -16,7 +16,10 @@ export class FirestoreFactoryRepository implements IFactoryRepository {
 
   async getFactoryByName(uid: string, name: string): Promise<FactoryModel | null> {
     const remote = await getDocument<RemoteResultFactoryModel>(this.path(uid), name);
-    return remote ? toFactoryDomain(remote) : null;
+    if (remote) return toFactoryDomain(remote);
+
+    const matches = await getCollection<RemoteResultFactoryModel>(this.path(uid), [where("Fabrica", "==", name)]);
+    return matches[0] ? toFactoryDomain(matches[0]) : null;
   }
 
   async createFactory(uid: string, factory: FactoryModel): Promise<void> {
@@ -24,7 +27,7 @@ export class FirestoreFactoryRepository implements IFactoryRepository {
   }
 
   async updateFactory(uid: string, name: string, data: Partial<FactoryModel>): Promise<void> {
-    await updateDocument(this.path(uid), name, data);
+    await updateDocument(this.path(uid), name, toFactoryRemotePartial(data));
   }
 
   async deleteFactory(uid: string, name: string): Promise<void> {

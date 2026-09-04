@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useFactories, useCreateFactory } from "@/presentation/hooks/useFactories";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
 import { Button } from "@/presentation/components/ui/button";
 import { Input } from "@/presentation/components/ui/input";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/presentation/components/ui/dialog";
@@ -60,28 +59,54 @@ export default function Factories() {
       ) : !factories?.length ? (
         <EmptyState icon={Factory} title="Sin fábricas" description="Creá la primera fábrica para configurar comisiones." />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fábrica</TableHead>
-              <TableHead>Marcas</TableHead>
-              <TableHead>Comisión base</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {factories.map((f) => (
-              <TableRow key={f.name}>
-                <TableCell>
-                  <Link to={factoryDetailPath(f.name)} className="font-medium hover:underline">
+        <div className="space-y-3">
+          {factories.map((f) => (
+            <div key={f.name} className="rounded-lg border border-border/60 bg-card p-4 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <Link to={factoryDetailPath(f.name)} className="text-base font-semibold hover:underline">
                     {f.name}
                   </Link>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{f.branchList.join(", ") || "-"}</TableCell>
-                <TableCell className="tabular-nums">{(f.defaultCommission * 100).toFixed(1)}%</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Segmentos: {f.branchList.join(", ") || "Sin segmentos"}
+                  </p>
+                </div>
+                <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-right">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Comisión global</p>
+                  <p className="tabular-nums font-semibold">{(f.defaultCommission * 100).toFixed(1)}%</p>
+                </div>
+              </div>
+
+              {Object.keys(f.segmentCommissions || {}).length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {Object.entries(f.segmentCommissions || {}).map(([segment, value]) => (
+                    <span key={segment} className="rounded-full border border-border/60 bg-muted/20 px-2.5 py-1 text-xs">
+                      {segment}: {(value * 100).toFixed(1)}%
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {f.paymentType.length > 0 && (
+                <div className="mt-3 border-t border-border/50 pt-3">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">Condiciones de pago</p>
+                  <div className="flex flex-wrap gap-2">
+                    {f.paymentType.map((condition) => (
+                      <span
+                        key={condition.paymentName}
+                        className="rounded-full border border-border/60 bg-muted/20 px-2.5 py-1 text-xs"
+                      >
+                        {condition.paymentName || "Sin nombre"}
+                        {condition.expiration > 0 && ` · ${condition.expiration} días`}
+                        {condition.discount > 0 && ` · ${condition.discount}% dto.`}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

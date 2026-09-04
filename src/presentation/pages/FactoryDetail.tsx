@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { ROUTES } from "@/presentation/routes/routes";
 import type { PaymentCondition } from "@/domain/entities/factory";
-import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Save, Trash2, X } from "lucide-react";
 
 const emptyCondition: PaymentCondition = { paymentName: "", discount: 0, month: 0, expiration: 0, date: 0, quantity: 1 };
 
@@ -23,14 +23,21 @@ export default function FactoryDetail() {
   const updateFactory = useUpdateFactory(appUser?.uid);
   const deleteFactory = useDeleteFactory(appUser?.uid);
 
-  const [branchList, setBranchList] = useState("");
+  const [segments, setSegments] = useState<string[]>([]);
+  const [newSegment, setNewSegment] = useState("");
   const [defaultCommission, setDefaultCommission] = useState("0");
+  const [segmentCommissions, setSegmentCommissions] = useState<Record<string, number>>({});
   const [conditions, setConditions] = useState<PaymentCondition[]>([]);
 
   useEffect(() => {
     if (factory) {
-      setBranchList(factory.branchList.join(", "));
-      setDefaultCommission(String(factory.defaultCommission));
+      setSegments(factory.branchList);
+      setDefaultCommission(String(factory.defaultCommission * 100));
+      setSegmentCommissions(
+        Object.fromEntries(
+          Object.entries(factory.segmentCommissions ?? {}).map(([segment, commission]) => [segment, commission * 100]),
+        ),
+      );
       setConditions(factory.paymentType);
     }
   }, [factory]);
@@ -38,12 +45,38 @@ export default function FactoryDetail() {
   if (isLoading) return <LoadingState className="min-h-[60vh]" />;
   if (!factory) return <p className="text-muted-foreground">Fábrica no encontrada.</p>;
 
+  const addSegment = () => {
+    const segment = newSegment.trim();
+    if (!segment || segments.includes(segment)) return;
+
+    setSegments((prev) => [...prev, segment]);
+    setSegmentCommissions((prev) => ({ ...prev, [segment]: prev[segment] ?? 0 }));
+    setNewSegment("");
+  };
+
+  const removeSegment = (segmentToRemove: string) => {
+    setSegments((prev) => prev.filter((segment) => segment !== segmentToRemove));
+    setSegmentCommissions((prev) => {
+      const next = { ...prev };
+      delete next[segmentToRemove];
+      return next;
+    });
+  };
+
   const handleSave = async () => {
+    const nextSegmentCommissions = segments.reduce<Record<string, number>>((acc, segment) => {
+      acc[segment] = segmentCommissions[segment] ?? 0;
+      return acc;
+    }, {});
+
     await updateFactory.mutateAsync({
       name: decodedName,
       data: {
-        branchList: branchList.split(",").map((b) => b.trim()).filter(Boolean),
-        defaultCommission: parseFloat(defaultCommission) || 0,
+        branchList: segments,
+        defaultCommission: (parseFloat(defaultCommission) || 0) / 100,
+        segmentCommissions: Object.fromEntries(
+          Object.entries(nextSegmentCommissions).map(([segment, commission]) => [segment, commission / 100]),
+        ),
         paymentType: conditions,
       },
     });
@@ -55,7 +88,7 @@ export default function FactoryDetail() {
   };
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
+    <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <Link to={ROUTES.FACTORIES} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -72,15 +105,106 @@ export default function FactoryDetail() {
         <CardHeader>
           <CardTitle className="text-base">Configuración</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="space-y-1.5">
-            <Label>Marcas (separadas por coma)</Label>
-            <Input value={branchList} onChange={(e) => setBranchList(e.target.value)} />
+        <CardContent className="grid gap-4 md:grid-cols-[1.5fr_0.8fr]">
+          <div className="space-y-2">
+            <Label>Segmentos</Label>
+            <div className="flex gap-2">
+              <Input
+                value={newSegment}
+                placeholder="Ej. Farmacia"
+                onChange={(e) => setNewSegment(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addSegment();
+                  }
+                }}
+              />
+              <Button type="button" variant="outline" onClick={addSegment} disabled={!newSegment.trim()}>
+                <Plus className="h-4 w-4" /> Agregar
+              </Button>
+            </div>
+            {segments.length > 0 ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {segments.map((segment) => (
+                  <span key={segment} className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-muted/30 py-1 pl-3 pr-1 text-sm">
+                    {segment}
+                    <button
+                      type="button"
+                      aria-label={`Quitar segmento ${segment}`}
+                      className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      onClick={() => removeSegment(segment)}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Agrega al menos un segmento para configurar sus comisiones.</p>
+            )}
           </div>
           <div className="space-y-1.5">
-            <Label>Comisión base (0-1)</Label>
-            <Input type="number" step="0.01" value={defaultCommission} onChange={(e) => setDefaultCommission(e.target.value)} />
+            <Label>Comisión global</Label>
+            <div className="relative">
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={defaultCommission}
+                onChange={(e) => setDefaultCommission(e.target.value)}
+                className="pr-8"
+              />
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">%</span>
+            </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/50 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Comisiones por segmento</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {segments.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Segmento</TableHead>
+                  <TableHead>Comisión</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {segments.map((segment) => (
+                  <TableRow key={segment}>
+                    <TableCell className="font-medium">{segment}</TableCell>
+                    <TableCell>
+                      <div className="max-w-[160px]">
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={segmentCommissions[segment] ?? 0}
+                            onChange={(e) =>
+                              setSegmentCommissions((prev) => ({
+                                ...prev,
+                                [segment]: parseFloat(e.target.value) || 0,
+                              }))
+                            }
+                            className="pr-8"
+                          />
+                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">%</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sin segmentos para configurar.</p>
+          )}
         </CardContent>
       </Card>
 
@@ -144,9 +268,17 @@ export default function FactoryDetail() {
         </CardContent>
       </Card>
 
-      <Button onClick={handleSave} disabled={updateFactory.isPending}>
-        <Save className="h-4 w-4" /> Guardar cambios
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button onClick={handleSave} disabled={updateFactory.isPending}>
+          <Save className="h-4 w-4" /> {updateFactory.isPending ? "Guardando..." : "Guardar cambios"}
+        </Button>
+        {updateFactory.isSuccess && <p className="text-center text-sm text-emerald-600">Cambios guardados correctamente.</p>}
+        {updateFactory.isError && (
+          <p className="text-center text-sm text-destructive">
+            No se pudieron guardar los cambios. {updateFactory.error instanceof Error ? updateFactory.error.message : "Revisa tu conexión."}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

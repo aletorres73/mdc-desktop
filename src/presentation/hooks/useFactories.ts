@@ -31,7 +31,10 @@ export function useUpdateFactory(uid: string | undefined) {
   return useMutation({
     mutationFn: ({ name, data }: { name: string; data: Partial<FactoryModel> }) =>
       factoryUseCase.updateFactory(uid!, name, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["factories", uid] }),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["factories", uid] });
+      void queryClient.invalidateQueries({ queryKey: ["factory", uid, variables.name] });
+    },
   });
 }
 

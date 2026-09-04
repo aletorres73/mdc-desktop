@@ -42,3 +42,28 @@ export function toFactoryRemote(domain: FactoryModel): RemoteResultFactoryModel 
     ComisionesSegmento: domain.segmentCommissions,
   };
 }
+
+export function toFactoryRemotePartial(data: Partial<FactoryModel>): Partial<RemoteResultFactoryModel> {
+  const remote: Partial<RemoteResultFactoryModel> = {};
+
+  if (data.name !== undefined) remote.Fabrica = data.name;
+  if (data.branchList !== undefined) remote.Marcas = data.branchList;
+  if (data.paymentType !== undefined) {
+    const conditions: Record<string, Record<string, string>> = {};
+    data.paymentType.forEach((condition, idx) => {
+      conditions[`condicion${idx + 1}`] = {
+        condicion: condition.paymentName,
+        dto: String(condition.discount),
+        meses: String(condition.month),
+        vencimiento: String(condition.expiration),
+        plazo: String(condition.date),
+        pagos: String(condition.quantity),
+      };
+    });
+    remote.Condiciones = conditions;
+  }
+  if (data.defaultCommission !== undefined) remote.ComisionBase = data.defaultCommission;
+  if (data.segmentCommissions !== undefined) remote.ComisionesSegmento = data.segmentCommissions;
+
+  return remote;
+}
