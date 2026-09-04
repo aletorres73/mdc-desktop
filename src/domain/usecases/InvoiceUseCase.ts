@@ -28,15 +28,46 @@ export class InvoiceUseCase {
   async createInvoice(uid: string, billing: BillingModel): Promise<string> {
     const normalizedNumber = billing.billingNumber.trim();
     if (!normalizedNumber) throw new Error("Ingresá un número de factura");
+    if (!billing.clientId || !billing.clientName.trim()) throw new Error("Seleccioná un cliente");
+    if (!billing.brand.trim()) throw new Error("Seleccioná una fábrica");
+
+    const factory = (await this.factoryRepo.getFactoryByName(uid, billing.brand)) ?? undefined;
+    if (!factory) throw new Error("La fábrica seleccionada no existe");
+    if (factory.branchList.length > 0 && !billing.branch.trim()) {
+      throw new Error("Seleccioná un segmento para la fábrica");
+    }
 
     const existing = await this.invoiceRepo.getInvoiceByBillingNumber(uid, normalizedNumber);
     if (existing && (!billing.id || existing.id !== billing.id)) {
       throw new Error("El número de factura ya existe en la base de datos. No se puede pisar un documento existente.");
     }
 
-    const factory = (await this.factoryRepo.getFactoryByName(uid, billing.brand)) ?? undefined;
     const recalculated = recalculateBilling(billing, factory);
     return this.invoiceRepo.createInvoice(uid, recalculated);
+  }
+
+  async updateInvoice(uid: string, id: string, data: Partial<BillingModel>): Promise<void> {
+    const current = await this.invoiceRepo.getInvoice(uid, id);
+    if (!current) throw new Error("Factura no encontrada");
+
+    const next = { ...current, ...data, id };
+    const normalizedNumber = next.billingNumber.trim();
+    if (!normalizedNumber) throw new Error("Ingresá un número de factura");
+    if (!next.clientId || !next.clientName.trim()) throw new Error("Seleccioná un cliente");
+    if (!next.brand.trim()) throw new Error("Seleccioná una fábrica");
+
+    const factory = (await this.factoryRepo.getFactoryByName(uid, next.brand)) ?? undefined;
+    if (!factory) throw new Error("La fábrica seleccionada no existe");
+    if (factory.branchList.length > 0 && !next.branch.trim()) {
+      throw new Error("Seleccioná un segmento para la fábrica");
+    }
+
+    const duplicate = await this.invoiceRepo.getInvoiceByBillingNumber(uid, normalizedNumber);
+    if (duplicate && duplicate.id !== id) {
+      throw new Error("El número de factura ya existe en la base de datos. Elegí otro número.");
+    }
+
+    await this.invoiceRepo.updateInvoice(uid, id, recalculateBilling(next, factory));
   }
 
   async deleteInvoice(uid: string, id: string): Promise<void> {

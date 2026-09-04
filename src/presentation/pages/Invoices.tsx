@@ -10,8 +10,8 @@ import { Button } from "@/presentation/components/ui/button";
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { EmptyState } from "@/presentation/components/shared/EmptyState";
 import { formatMoney, formatDate } from "@/lib/utils";
-import { invoiceDetailPath } from "@/presentation/routes/routes";
-import { Receipt, Search } from "lucide-react";
+import { invoiceDetailPath, ROUTES } from "@/presentation/routes/routes";
+import { Plus, Receipt, Search } from "lucide-react";
 
 const STATE_OPTIONS = [
   { value: "Pendiente", label: "Pendiente" },
@@ -31,9 +31,14 @@ export default function Invoices() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Facturas</h1>
-        <p className="text-sm text-muted-foreground">Explorador global de facturación.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Facturas</h1>
+          <p className="text-sm text-muted-foreground">Explorador global de facturación.</p>
+        </div>
+        <Link to={ROUTES.CREATE_INVOICE} className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+          <Plus className="h-4 w-4" /> Nueva factura
+        </Link>
       </div>
 
       <div className="flex flex-wrap gap-3">

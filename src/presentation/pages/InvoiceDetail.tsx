@@ -20,9 +20,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/presentation/components/ui/dialog";
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { formatMoney, formatDate } from "@/lib/utils";
-import { ROUTES } from "@/presentation/routes/routes";
+import { editInvoicePath, ROUTES } from "@/presentation/routes/routes";
 import type { MovementMethod } from "@/domain/entities/paymentRegister";
-import { ArrowLeft, Plus, Trash2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, Trash2, CheckCircle2 } from "lucide-react";
 
 const METHOD_OPTIONS: { value: MovementMethod; label: string }[] = [
   { value: "EFECTIVO", label: "Efectivo" },
@@ -82,20 +82,23 @@ export default function InvoiceDetail() {
           <h1 className="text-2xl font-bold tracking-tight">Factura #{invoice.billingNumber}</h1>
           <p className="text-sm text-muted-foreground">{invoice.clientName} · {invoice.brand}</p>
         </div>
-        <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-          <DialogTrigger render={<Button variant="destructive"><Trash2 className="h-4 w-4" />Eliminar</Button>} />
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Eliminar factura</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground">Esta acción no se puede deshacer.</p>
-            <DialogFooter>
-              <Button variant="destructive" onClick={handleDelete} disabled={deleteInvoice.isPending}>
-                Confirmar eliminación
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Link to={editInvoicePath(invoiceId!)}><Button variant="outline"><Pencil className="h-4 w-4" />Editar</Button></Link>
+          <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+            <DialogTrigger render={<Button variant="destructive"><Trash2 className="h-4 w-4" />Eliminar</Button>} />
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Eliminar factura</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">Esta acción no se puede deshacer.</p>
+              <DialogFooter>
+                <Button variant="destructive" onClick={handleDelete} disabled={deleteInvoice.isPending}>
+                  Confirmar eliminación
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">

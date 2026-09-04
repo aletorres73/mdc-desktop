@@ -6,7 +6,9 @@ export const ROUTES = {
   PROFILE: "/profile",
   HOME: "/",
   INVOICES: "/invoices",
+  CREATE_INVOICE: "/invoices/new",
   INVOICE_DETAIL: "/invoices/:invoiceId",
+  EDIT_INVOICE: "/invoices/:invoiceId/edit",
   CLIENTS: "/clients",
   CLIENT_DETAIL: "/clients/:clientId",
   ORDERS: "/orders",
@@ -21,6 +23,10 @@ export const ROUTES = {
 
 export function invoiceDetailPath(invoiceId: string) {
   return `/invoices/${invoiceId}`;
+}
+
+export function editInvoicePath(invoiceId: string) {
+  return `/invoices/${invoiceId}/edit`;
 }
 
 export function clientDetailPath(clientId: string) {

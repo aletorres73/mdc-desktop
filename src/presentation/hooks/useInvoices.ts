@@ -24,11 +24,31 @@ export function useInvoice(uid: string | undefined, invoiceId: string | undefine
   });
 }
 
+export function useCreateInvoice(uid: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (billing: Parameters<typeof invoiceUseCase.createInvoice>[1]) => invoiceUseCase.createInvoice(uid!, billing),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices", uid] }),
+  });
+}
+
 export function useDeleteInvoice(uid: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (invoiceId: string) => invoiceUseCase.deleteInvoice(uid!, invoiceId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices", uid] }),
+  });
+}
+
+export function useUpdateInvoice(uid: string | undefined, invoiceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof invoiceUseCase.updateInvoice>[2]) =>
+      invoiceUseCase.updateInvoice(uid!, invoiceId, data),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["invoice", uid, invoiceId] });
+      void queryClient.invalidateQueries({ queryKey: ["invoices", uid] });
+    },
   });
 }
 

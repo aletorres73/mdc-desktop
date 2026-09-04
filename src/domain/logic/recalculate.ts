@@ -11,7 +11,7 @@ export function recalculateBilling(
   factory?: FactoryModel,
   now: number = Date.now(),
 ): BillingModel {
-  const rest = billing.total - billing.payed;
+  const rest = billing.toPay - billing.payed;
 
   let payDate = billing.payDate;
   if (billing.deliveryDate && billing.paymentCondition && factory) {

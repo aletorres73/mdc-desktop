@@ -14,7 +14,7 @@ export function buyOrderToBilling(order: BuyOrderModel, billingNumber: string): 
   return {
     billingNumber,
     orderId: order.id,
-    type: order.type,
+    type: "Factura",
     total,
     loadDate: Date.now(),
     deliveryDate: order.deliveryDate,
