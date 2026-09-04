@@ -60,6 +60,9 @@ export function useUpdateClient(uid: string | undefined) {
   return useMutation({
     mutationFn: ({ clientId, data }: { clientId: string; data: Partial<ClientModel> }) =>
       clientUseCase.updateClient(uid!, clientId, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clients", uid] }),
+    onSuccess: (_, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["clients", uid] });
+      void queryClient.invalidateQueries({ queryKey: ["client", uid, variables.clientId] });
+    },
   });
 }

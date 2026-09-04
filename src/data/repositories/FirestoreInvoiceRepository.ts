@@ -37,7 +37,9 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
       constraints.push(where("Razon Social", "<", prefix + "\uf8ff"));
       constraints.push(orderBy("Razon Social"));
     }
-    constraints.push(orderBy("Timestamp", "desc"));
+    // La cuenta corriente filtra por cliente y ordena en memoria para no exigir
+    // un índice compuesto adicional en Firestore.
+    if (!filters.clientId) constraints.push(orderBy("Timestamp", "desc"));
 
     if (cursor) {
       const cursorSnap = await getDoc(doc(db, this.path(uid), cursor));
@@ -50,6 +52,7 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     const items: BillingModel[] = snap.docs.map((d) =>
       toBillingDomain(d.id, d.data() as RemoteResultBillingModel),
     );
+    if (filters.clientId) items.sort((a, b) => b.timeStamp - a.timeStamp);
 
     return {
       items,
