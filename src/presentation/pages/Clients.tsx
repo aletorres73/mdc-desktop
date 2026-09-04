@@ -30,8 +30,12 @@ export default function Clients() {
 
   const handleCreate = async () => {
     if (!newClientName.trim()) return;
-    await createClient.mutateAsync({ clientName: newClientName.trim() });
+    await createClient.mutateAsync({
+      clientName: newClientName.trim(),
+      clientId: newClientId.trim() || undefined,
+    });
     setNewClientName("");
+    setNewClientId("");
     setOpen(false);
   };
 
@@ -54,7 +58,7 @@ export default function Clients() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="clientId">ID asignado</Label>
-              <Input id="clientId" value={newClientId} disabled readOnly />
+              <Input id="clientId" value={newClientId} readOnly={true} onChange={(e) => setNewClientId(e.target.value)} />
             </div>
             <DialogFooter>
               <Button onClick={handleCreate} disabled={createClient.isPending}>

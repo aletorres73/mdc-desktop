@@ -12,14 +12,23 @@ export class CreateInvoiceFromOrderUseCase {
   ) {}
 
   async execute(uid: string, clientId: string, orderId: string, billingNumber: string): Promise<string> {
+    const normalizedNumber = billingNumber.trim();
+    if (!normalizedNumber) throw new Error("Ingresá un número de factura");
+
     const order = await this.buyOrderRepo.getBuyOrder(uid, clientId, orderId);
     if (!order) throw new Error("Pedido no encontrado");
 
     const validationError = validateBuyOrderForBilling(order);
     if (validationError) throw new Error(validationError);
 
-    const billing = buyOrderToBilling(order, billingNumber);
+    const duplicate = await this.invoiceRepo.getInvoiceByBillingNumber(uid, normalizedNumber);
+    if (duplicate) {
+      throw new Error("El número de factura ya existe en la base de datos. No se puede pisar un documento existente.");
+    }
+
+    const billing = buyOrderToBilling(order, normalizedNumber);
     const factory = (await this.factoryRepo.getFactoryByName(uid, billing.brand)) ?? undefined;
-    return this.invoiceRepo.createInvoice(uid, recalculateBilling(billing, factory));
+    const recalculated = recalculateBilling(billing, factory);
+    return this.invoiceRepo.createInvoice(uid, recalculated);
   }
 }

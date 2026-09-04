@@ -17,9 +17,10 @@ export function calculateCommission(
   if (!factory) return 0;
 
   const rate = factory.segmentCommissions[billing.branch] ?? factory.defaultCommission;
+  const typeName = billing.type?.toLowerCase() ?? "";
 
   let base = billing.total;
-  if (config.deductIVA && billing.type === "Factura") {
+  if (config.deductIVA && typeName.includes("factura")) {
     base = base / (1 + config.ivaRate);
   }
 

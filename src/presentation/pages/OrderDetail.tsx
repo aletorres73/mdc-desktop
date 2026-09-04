@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useBuyOrder } from "@/presentation/hooks/useBuyOrders";
 import { useCreateInvoiceFromOrder } from "@/presentation/hooks/useBuyOrders";
-import { buyOrderUseCase } from "@/di/container";
+import { buyOrderUseCase, invoiceUseCase } from "@/di/container";
 import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
 import { Button } from "@/presentation/components/ui/button";
@@ -23,14 +24,27 @@ export default function OrderDetail() {
   const [billingNumber, setBillingNumber] = useState("");
   const [open, setOpen] = useState(false);
 
+  const normalizedBillingNumber = billingNumber.trim();
+  const duplicateInvoiceQuery = useQuery({
+    queryKey: ["invoiceByNumber", appUser?.uid, normalizedBillingNumber],
+    queryFn: () => invoiceUseCase.getInvoiceByBillingNumber(appUser!.uid, normalizedBillingNumber),
+    enabled: !!appUser?.uid && normalizedBillingNumber.length > 0,
+    staleTime: 0,
+  });
+
+  const duplicateInvoice = duplicateInvoiceQuery.data;
+  const hasDuplicateInvoice = !!duplicateInvoice;
+
   const total = useMemo(() => (order ? buyOrderUseCase.calculateTotal(order) : 0), [order]);
 
   if (isLoading) return <LoadingState className="min-h-[60vh]" />;
   if (!order) return <p className="text-muted-foreground">Pedido no encontrado.</p>;
 
   const handleCreateInvoice = async () => {
-    if (!billingNumber.trim()) return;
-    await createInvoice.mutateAsync({ clientId: clientId!, orderId: orderId!, billingNumber: billingNumber.trim() });
+    const value = billingNumber.trim();
+    if (!value) return;
+    if (hasDuplicateInvoice) return;
+    await createInvoice.mutateAsync({ clientId: clientId!, orderId: orderId!, billingNumber: value });
     setOpen(false);
     setBillingNumber("");
   };
@@ -54,9 +68,14 @@ export default function OrderDetail() {
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Número de factura</label>
               <Input value={billingNumber} onChange={(e) => setBillingNumber(e.target.value)} />
+              {hasDuplicateInvoice && (
+                <p className="text-xs font-medium text-destructive">
+                  Este número ya existe en la base de datos y no se puede pisar.
+                </p>
+              )}
             </div>
             <DialogFooter>
-              <Button onClick={handleCreateInvoice} disabled={createInvoice.isPending}>
+              <Button onClick={handleCreateInvoice} disabled={createInvoice.isPending || hasDuplicateInvoice}>
                 Generar
               </Button>
             </DialogFooter>

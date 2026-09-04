@@ -17,9 +17,11 @@ export class ClientUseCase {
     return this.clientRepo.getClient(uid, clientId);
   }
 
-  async createClient(uid: string, clientName: string): Promise<ClientModel> {
-    const id = await this.clientRepo.suggestNextClientId(uid);
-    const client: ClientModel = { clientId: id, clientName };
+  async createClient(uid: string, clientName: string, preferredClientId?: string): Promise<ClientModel> {
+    const trimmedName = clientName.trim();
+    const normalizedId = (preferredClientId ?? "").trim();
+    const id = normalizedId || (await this.clientRepo.suggestNextClientId(uid));
+    const client: ClientModel = { clientId: id, clientName: trimmedName };
     await this.clientRepo.createClient(uid, client);
     return client;
   }

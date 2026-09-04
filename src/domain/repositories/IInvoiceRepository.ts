@@ -15,6 +15,7 @@ export interface IInvoiceRepository {
     cursor?: string | null,
   ): Promise<InvoicePage>;
   getInvoice(uid: string, id: string): Promise<BillingModel | null>;
+  getInvoiceByBillingNumber(uid: string, billingNumber: string): Promise<BillingModel | null>;
   createInvoice(uid: string, billing: BillingModel): Promise<string>;
   updateInvoice(uid: string, id: string, data: Partial<BillingModel>): Promise<void>;
   deleteInvoice(uid: string, id: string): Promise<void>;

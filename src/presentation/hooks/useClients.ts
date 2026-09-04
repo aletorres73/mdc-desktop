@@ -38,8 +38,8 @@ export function useClient(uid: string | undefined, clientId: string | undefined)
 export function useCreateClient(uid: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ clientName }: { clientName: string }) =>
-      clientUseCase.createClient(uid!, clientName),
+    mutationFn: ({ clientName, clientId }: { clientName: string; clientId?: string }) =>
+      clientUseCase.createClient(uid!, clientName, clientId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients", uid] });
       queryClient.invalidateQueries({ queryKey: ["suggestedClientId", uid] });

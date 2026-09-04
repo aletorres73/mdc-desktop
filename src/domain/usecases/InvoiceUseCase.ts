@@ -21,7 +21,19 @@ export class InvoiceUseCase {
     return this.invoiceRepo.getInvoice(uid, id);
   }
 
+  getInvoiceByBillingNumber(uid: string, billingNumber: string): Promise<BillingModel | null> {
+    return this.invoiceRepo.getInvoiceByBillingNumber(uid, billingNumber);
+  }
+
   async createInvoice(uid: string, billing: BillingModel): Promise<string> {
+    const normalizedNumber = billing.billingNumber.trim();
+    if (!normalizedNumber) throw new Error("Ingresá un número de factura");
+
+    const existing = await this.invoiceRepo.getInvoiceByBillingNumber(uid, normalizedNumber);
+    if (existing && (!billing.id || existing.id !== billing.id)) {
+      throw new Error("El número de factura ya existe en la base de datos. No se puede pisar un documento existente.");
+    }
+
     const factory = (await this.factoryRepo.getFactoryByName(uid, billing.brand)) ?? undefined;
     const recalculated = recalculateBilling(billing, factory);
     return this.invoiceRepo.createInvoice(uid, recalculated);

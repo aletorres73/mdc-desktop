@@ -1,5 +1,6 @@
 import {
   getCollection,
+  getCollectionGroup,
   getDocument,
   setDocument,
   updateDocument,
@@ -59,7 +60,31 @@ export class FirestoreClientRepository implements IClientRepository {
   }
 
   async deleteClient(uid: string, clientId: string): Promise<void> {
+    const clientOrdersPath = `users/${uid}/clients/${clientId}/buyOrders`;
+    const clientOrders = await getCollection(clientOrdersPath);
+    for (const order of clientOrders) {
+      await deleteDocument(clientOrdersPath, order.id);
+    }
+
+    const billingPath = `users/${uid}/allBillings`;
+    const billings = await getCollection<{ id: string }>(billingPath, [where("Cliente Id", "==", clientId)]);
+    for (const billing of billings) {
+      await deleteDocument(billingPath, billing.id);
+    }
+
+    const paymentPath = `users/${uid}/paymentRegister`;
+    const payments = await getCollection<{ id: string }>(paymentPath, [where("Cliente ID", "==", clientId)]);
+    for (const payment of payments) {
+      await deleteDocument(paymentPath, payment.id);
+    }
+
     await deleteDocument(this.path(uid), clientId);
+
+    const hasRemainingOrders = await this.hasAnyOrderForUser(uid);
+    if (!hasRemainingOrders) {
+      await setDocument(this.configPath(uid), "counters", { lastOrderNumber: 0 });
+    }
+
     // Regla de borrado: si se elimina el ID más alto, el contador retrocede para reutilizar el espacio.
     const n = this.numericId(clientId);
     if (n > 0) {
@@ -67,6 +92,15 @@ export class FirestoreClientRepository implements IClientRepository {
       if (counters && n === (counters.lastClientNumber ?? 0)) {
         await setDocument(this.configPath(uid), "counters", { lastClientNumber: n - 1 });
       }
+    }
+  }
+
+  private async hasAnyOrderForUser(uid: string): Promise<boolean> {
+    try {
+      const all = await getCollectionGroup<{ __path?: string }>("buyOrders");
+      return all.some((order) => order.__path?.startsWith(`users/${uid}/`));
+    } catch {
+      return true;
     }
   }
 

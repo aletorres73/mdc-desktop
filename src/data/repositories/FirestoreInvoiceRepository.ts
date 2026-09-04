@@ -64,11 +64,34 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     return remote ? toBillingDomain(id, remote) : null;
   }
 
+  async getInvoiceByBillingNumber(uid: string, billingNumber: string): Promise<BillingModel | null> {
+    const normalized = billingNumber.trim();
+    if (!normalized) return null;
+
+    const q = fsQuery(
+      collection(db, this.path(uid)),
+      where("Numero", "==", normalized),
+      limit(1),
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+
+    const doc = snap.docs[0];
+    return toBillingDomain(doc.id, doc.data() as RemoteResultBillingModel);
+  }
+
   async createInvoice(uid: string, billing: BillingModel): Promise<string> {
     if (billing.id) {
       await setDocument(this.path(uid), billing.id, toBillingRemote(billing));
       return billing.id;
     }
+
+    const duplicate = billing.billingNumber ? await this.getInvoiceByBillingNumber(uid, billing.billingNumber) : null;
+    if (duplicate?.id) {
+      await this.updateInvoice(uid, duplicate.id, billing);
+      return duplicate.id;
+    }
+
     return addDocument(this.path(uid), toBillingRemote(billing));
   }
 

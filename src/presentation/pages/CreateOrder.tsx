@@ -43,6 +43,7 @@ export default function CreateOrder() {
   const canSubmit = !!client && missing.length === 0 && !createOrder.isPending;
 
   const selectedFactory = factories?.find((f) => f.name === factory);
+  const selectedCondition = selectedFactory?.paymentType.find((p) => p.paymentName === paymentCondition);
   const factoryOptions = (factories ?? []).map((f) => ({ value: f.name, label: f.name }));
   const branchOptions = (selectedFactory?.branchList ?? []).map((b) => ({ value: b, label: b }));
   const conditionOptions = (selectedFactory?.paymentType ?? []).map((p) => ({
@@ -50,10 +51,18 @@ export default function CreateOrder() {
     label: p.paymentName,
   }));
 
+  useEffect(() => {
+    if (selectedCondition) {
+      setDiscount(String(selectedCondition.discount));
+    }
+  }, [selectedCondition]);
+
+  const effectiveDiscount = selectedCondition ? selectedCondition.discount : parseFloat(discount) || 0;
+
   const total = useMemo(() => {
     const gross = articles.reduce((sum, a) => sum + (a.value ?? 0) * a.pairs, 0);
-    return gross * (1 - (parseFloat(discount) || 0) / 100);
-  }, [articles, discount]);
+    return gross * (1 - effectiveDiscount / 100);
+  }, [articles, effectiveDiscount]);
 
   const updateArticle = (idx: number, patch: Partial<ArticleOrderModel>) => {
     setArticles((prev) => prev.map((a, i) => (i === idx ? { ...a, ...patch } : a)));
@@ -86,8 +95,8 @@ export default function CreateOrder() {
         articles: validArticles,
         loadedDate: Date.now(),
         paymentCondition,
-        discount: parseFloat(discount) || 0,
-        expirationDays: selectedFactory?.paymentType.find((p) => p.paymentName === paymentCondition)?.expiration ?? 0,
+        discount: effectiveDiscount,
+        expirationDays: selectedCondition?.expiration ?? 0,
         timeStamp: Date.now(),
       });
       navigate(clientDetailPath(clientId));
@@ -136,7 +145,14 @@ export default function CreateOrder() {
           </div>
           <div className="space-y-1.5">
             <Label>Descuento (%)</Label>
-            <Input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+            <Input
+              type="number"
+              value={effectiveDiscount}
+              onChange={(e) => {
+                if (!selectedCondition) setDiscount(e.target.value);
+              }}
+              readOnly={Boolean(selectedCondition)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Fecha de entrega</Label>

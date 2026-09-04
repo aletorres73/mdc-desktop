@@ -22,6 +22,14 @@ export default function SignUp() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!name.trim() || !lastName.trim()) {
+      setError("Nombre y apellido son obligatorios.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Ingresá un email válido.");
+      return;
+    }
     if (password.length < 6) {
       setError("La contraseña debe tener al menos 6 caracteres.");
       return;
