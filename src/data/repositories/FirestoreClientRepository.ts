@@ -5,8 +5,6 @@ import {
   updateDocument,
   deleteDocument,
   where,
-  orderBy,
-  limit,
 } from "@/data/datasources/firestore";
 import { toClientDomain, toClientRemote } from "@/data/mappers/clientMapper";
 import type { RemoteResultClientModel } from "@/data/remote/remoteClient";
@@ -16,6 +14,14 @@ import type { ClientModel } from "@/domain/entities/client";
 export class FirestoreClientRepository implements IClientRepository {
   private path(uid: string) {
     return `users/${uid}/clients`;
+  }
+
+  private configPath(uid: string) {
+    return `users/${uid}/config`;
+  }
+
+  private numericId(id: string): number {
+    return parseInt(String(id).replace(/\D/g, ""), 10) || 0;
   }
 
   async getClients(uid: string): Promise<ClientModel[]> {
@@ -38,6 +44,14 @@ export class FirestoreClientRepository implements IClientRepository {
 
   async createClient(uid: string, client: ClientModel): Promise<void> {
     await setDocument(this.path(uid), client.clientId, toClientRemote(client));
+    // Mantener el contador por encima del ID más alto creado.
+    const n = this.numericId(client.clientId);
+    if (n > 0) {
+      const counters = await getDocument<{ lastClientNumber?: number }>(this.configPath(uid), "counters");
+      if (n > (counters?.lastClientNumber ?? 0)) {
+        await setDocument(this.configPath(uid), "counters", { lastClientNumber: n });
+      }
+    }
   }
 
   async updateClient(uid: string, clientId: string, data: Partial<ClientModel>): Promise<void> {
@@ -46,15 +60,26 @@ export class FirestoreClientRepository implements IClientRepository {
 
   async deleteClient(uid: string, clientId: string): Promise<void> {
     await deleteDocument(this.path(uid), clientId);
+    // Regla de borrado: si se elimina el ID más alto, el contador retrocede para reutilizar el espacio.
+    const n = this.numericId(clientId);
+    if (n > 0) {
+      const counters = await getDocument<{ lastClientNumber?: number }>(this.configPath(uid), "counters");
+      if (counters && n === (counters.lastClientNumber ?? 0)) {
+        await setDocument(this.configPath(uid), "counters", { lastClientNumber: n - 1 });
+      }
+    }
   }
 
   async suggestNextClientId(uid: string): Promise<string> {
-    const remote = await getCollection<RemoteResultClientModel & { id: string }>(this.path(uid), [
-      orderBy("Cliente Id", "desc"),
-      limit(1),
-    ]);
-    const lastId = remote[0]?.["Cliente Id"];
-    const lastNumber = lastId ? parseInt(lastId.replace(/\D/g, ""), 10) || 0 : 0;
-    return `client_${lastNumber + 1}`;
+    const counters = await getDocument<{ lastClientNumber?: number }>(this.configPath(uid), "counters");
+    let last = counters?.lastClientNumber ?? 0;
+    if (last === 0) {
+      // Escaneo de emergencia: mayor ID numérico en nombres de documento y campo "Cliente Id".
+      const all = await getCollection<RemoteResultClientModel & { id: string }>(this.path(uid));
+      for (const c of all) {
+        last = Math.max(last, this.numericId(c.id), this.numericId(c["Cliente Id"] ?? ""));
+      }
+    }
+    return String(last + 1);
   }
 }

@@ -4,9 +4,26 @@ import type { ClientModel } from "@/domain/entities/client";
 
 export function useClients(uid: string | undefined, search = "") {
   return useQuery({
-    queryKey: ["clients", uid, search],
-    queryFn: () => clientUseCase.searchByPrefix(uid!, search),
+    queryKey: ["clients", uid],
+    queryFn: () => clientUseCase.getClients(uid!),
     enabled: !!uid,
+    // Búsqueda local case-insensitive sobre la lista ya descargada.
+    select: (data) => {
+      const q = search.trim().toLowerCase();
+      if (!q) return data;
+      return data.filter(
+        (c) => c.clientName.toLowerCase().includes(q) || c.clientId.toLowerCase().includes(q),
+      );
+    },
+  });
+}
+
+export function useSuggestedClientId(uid: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["suggestedClientId", uid],
+    queryFn: () => clientUseCase.suggestNextClientId(uid!),
+    enabled: !!uid && enabled,
+    staleTime: 0,
   });
 }
 
@@ -21,8 +38,12 @@ export function useClient(uid: string | undefined, clientId: string | undefined)
 export function useCreateClient(uid: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (clientName: string) => clientUseCase.createClient(uid!, clientName),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["clients", uid] }),
+    mutationFn: ({ clientName }: { clientName: string }) =>
+      clientUseCase.createClient(uid!, clientName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients", uid] });
+      queryClient.invalidateQueries({ queryKey: ["suggestedClientId", uid] });
+    },
   });
 }
 

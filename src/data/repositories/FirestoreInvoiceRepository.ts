@@ -30,6 +30,13 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     if (filters.clientId) constraints.push(where("Cliente Id", "==", filters.clientId));
     if (filters.brand) constraints.push(where("Marca", "==", filters.brand));
     if (filters.state) constraints.push(where("Estado", "==", filters.state));
+    if (filters.clientNamePrefix) {
+      // Búsqueda por prefijo de razón social directamente en Firestore.
+      const prefix = filters.clientNamePrefix;
+      constraints.push(where("Razon Social", ">=", prefix));
+      constraints.push(where("Razon Social", "<", prefix + "\uf8ff"));
+      constraints.push(orderBy("Razon Social"));
+    }
     constraints.push(orderBy("Timestamp", "desc"));
 
     if (cursor) {

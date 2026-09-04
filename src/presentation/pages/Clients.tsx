@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
-import { useClients, useCreateClient, useDeleteClient } from "@/presentation/hooks/useClients";
+import { useClients, useCreateClient, useDeleteClient, useSuggestedClientId } from "@/presentation/hooks/useClients";
 import { Input } from "@/presentation/components/ui/input";
 import { Button } from "@/presentation/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
@@ -16,15 +16,21 @@ export default function Clients() {
   const { appUser } = useAuth();
   const [search, setSearch] = useState("");
   const [newClientName, setNewClientName] = useState("");
+  const [newClientId, setNewClientId] = useState("");
   const [open, setOpen] = useState(false);
 
   const { data: clients, isLoading } = useClients(appUser?.uid, search);
   const createClient = useCreateClient(appUser?.uid);
   const deleteClient = useDeleteClient(appUser?.uid);
+  const { data: suggestedId } = useSuggestedClientId(appUser?.uid, open);
+
+  useEffect(() => {
+    if (open && suggestedId) setNewClientId(suggestedId);
+  }, [open, suggestedId]);
 
   const handleCreate = async () => {
     if (!newClientName.trim()) return;
-    await createClient.mutateAsync(newClientName.trim());
+    await createClient.mutateAsync({ clientName: newClientName.trim() });
     setNewClientName("");
     setOpen(false);
   };
@@ -45,6 +51,10 @@ export default function Clients() {
             <div className="space-y-1.5">
               <Label htmlFor="clientName">Razón social</Label>
               <Input id="clientName" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="clientId">ID asignado</Label>
+              <Input id="clientId" value={newClientId} disabled readOnly />
             </div>
             <DialogFooter>
               <Button onClick={handleCreate} disabled={createClient.isPending}>

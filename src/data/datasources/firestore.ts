@@ -1,5 +1,6 @@
 import {
   collection,
+  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -51,6 +52,15 @@ export async function getCollection<T = DocumentData>(
   constraints: QueryConstraint[] = [],
 ): Promise<T[]> {
   const q = query(colRef(path), ...constraints);
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) })) as T[];
+}
+
+export async function getCollectionGroup<T = DocumentData>(
+  collectionId: string,
+  constraints: QueryConstraint[] = [],
+): Promise<T[]> {
+  const q = query(collectionGroup(db, collectionId), ...constraints);
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) })) as T[];
 }

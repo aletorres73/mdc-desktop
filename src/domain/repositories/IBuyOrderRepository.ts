@@ -6,4 +6,5 @@ export interface IBuyOrderRepository {
   createBuyOrder(uid: string, order: BuyOrderModel): Promise<void>;
   updateBuyOrder(uid: string, order: BuyOrderModel): Promise<void>;
   deleteBuyOrder(uid: string, clientId: string, orderId: string): Promise<void>;
+  nextOrderNumber(uid: string): Promise<number>;
 }

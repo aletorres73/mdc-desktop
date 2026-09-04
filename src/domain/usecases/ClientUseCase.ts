@@ -18,10 +18,14 @@ export class ClientUseCase {
   }
 
   async createClient(uid: string, clientName: string): Promise<ClientModel> {
-    const clientId = await this.clientRepo.suggestNextClientId(uid);
-    const client: ClientModel = { clientId, clientName };
+    const id = await this.clientRepo.suggestNextClientId(uid);
+    const client: ClientModel = { clientId: id, clientName };
     await this.clientRepo.createClient(uid, client);
     return client;
+  }
+
+  suggestNextClientId(uid: string): Promise<string> {
+    return this.clientRepo.suggestNextClientId(uid);
   }
 
   updateClient(uid: string, clientId: string, data: Partial<ClientModel>): Promise<void> {

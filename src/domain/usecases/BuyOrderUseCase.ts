@@ -12,9 +12,10 @@ export class BuyOrderUseCase {
     return this.buyOrderRepo.getBuyOrder(uid, clientId, orderId);
   }
 
-  async createOrder(uid: string, order: Omit<BuyOrderModel, "id">): Promise<BuyOrderModel> {
+  async createOrder(uid: string, order: Omit<BuyOrderModel, "id" | "order">): Promise<BuyOrderModel> {
     const id = `order_${Date.now()}`;
-    const full: BuyOrderModel = { ...order, id };
+    const orderNumber = await this.buyOrderRepo.nextOrderNumber(uid);
+    const full: BuyOrderModel = { ...order, id, order: String(orderNumber) };
     await this.buyOrderRepo.createBuyOrder(uid, full);
     return full;
   }

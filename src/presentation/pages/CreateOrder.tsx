@@ -33,6 +33,14 @@ export default function CreateOrder() {
   const [deliveryDate, setDeliveryDate] = useState("");
   const [comments, setComments] = useState("");
   const [articles, setArticles] = useState<ArticleOrderModel[]>([{ ...emptyArticle }]);
+  const [error, setError] = useState("");
+
+  const validArticles = articles.filter((a) => a.name.trim() && a.pairs > 0);
+  const missing: string[] = [];
+  if (!factory) missing.push("fábrica");
+  if (!branch) missing.push("marca");
+  if (validArticles.length === 0) missing.push("al menos un artículo con pares > 0");
+  const canSubmit = !!client && missing.length === 0 && !createOrder.isPending;
 
   const selectedFactory = factories?.find((f) => f.name === factory);
   const factoryOptions = (factories ?? []).map((f) => ({ value: f.name, label: f.name }));
@@ -52,25 +60,40 @@ export default function CreateOrder() {
   };
 
   const handleSubmit = async () => {
-    if (!clientId || !client) return;
-    await createOrder.mutateAsync({
-      clientId,
-      order: `PED-${Date.now()}`,
-      client: client.clientName,
-      factory,
-      branch,
-      deliveryDate: deliveryDate ? new Date(deliveryDate).getTime() : 0,
-      type: "Pedido",
-      billing: "",
-      comments,
-      articles: articles.filter((a) => a.name),
-      loadedDate: Date.now(),
-      paymentCondition,
-      discount: parseFloat(discount) || 0,
-      expirationDays: selectedFactory?.paymentType.find((p) => p.paymentName === paymentCondition)?.expiration ?? 0,
-      timeStamp: Date.now(),
-    });
-    navigate(clientDetailPath(clientId));
+    setError("");
+    if (!clientId || !client) {
+      setError("El cliente todavía no se cargó. Esperá un momento e intentá de nuevo.");
+      return;
+    }
+    if (!factory || !branch) {
+      setError("Seleccioná una fábrica y una marca antes de guardar.");
+      return;
+    }
+    if (validArticles.length === 0) {
+      setError("Agregá al menos un artículo con nombre y pares mayores a 0.");
+      return;
+    }
+    try {
+      await createOrder.mutateAsync({
+        clientId,
+        client: client.clientName,
+        factory,
+        branch,
+        deliveryDate: deliveryDate ? new Date(deliveryDate).getTime() : 0,
+        type: "Pedido",
+        billing: "",
+        comments,
+        articles: validArticles,
+        loadedDate: Date.now(),
+        paymentCondition,
+        discount: parseFloat(discount) || 0,
+        expirationDays: selectedFactory?.paymentType.find((p) => p.paymentName === paymentCondition)?.expiration ?? 0,
+        timeStamp: Date.now(),
+      });
+      navigate(clientDetailPath(clientId));
+    } catch {
+      setError("No se pudo guardar el pedido. Revisá tu conexión e intentá de nuevo.");
+    }
   };
 
   return (
@@ -189,9 +212,14 @@ export default function CreateOrder() {
         <span className="text-2xl font-bold tracking-tight tabular-nums">{formatMoney(total)}</span>
       </div>
 
-      <Button onClick={handleSubmit} disabled={createOrder.isPending || !factory || !branch}>
-        Guardar pedido
+      {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+
+      <Button onClick={handleSubmit} disabled={!canSubmit}>
+        {createOrder.isPending ? "Guardando..." : "Guardar pedido"}
       </Button>
+      {!canSubmit && !createOrder.isPending && missing.length > 0 && (
+        <p className="text-sm text-muted-foreground">Falta: {missing.join(", ")}.</p>
+      )}
     </div>
   );
 }

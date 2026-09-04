@@ -21,7 +21,7 @@ export function useBuyOrder(uid: string | undefined, clientId: string | undefine
 export function useCreateBuyOrder(uid: string | undefined, clientId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (order: Omit<BuyOrderModel, "id">) => buyOrderUseCase.createOrder(uid!, order),
+    mutationFn: (order: Omit<BuyOrderModel, "id" | "order">) => buyOrderUseCase.createOrder(uid!, order),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["buyOrders", uid, clientId] }),
   });
 }

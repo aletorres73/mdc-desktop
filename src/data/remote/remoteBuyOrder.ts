@@ -3,6 +3,7 @@ export interface RemoteArticleOrderModel {
   Color: string;
   Entregados: string;
   Pares: string;
+  Valor?: string;
 }
 
 export interface RemoteResultBuyOrder {
