@@ -7,3 +7,4 @@ export * from "./CommissionsUseCase";
 export * from "./InitConfigUseCase";
 export * from "./AuthUseCase";
 export * from "./UserUseCase";
+export * from "./PaymentRegisterUseCase";

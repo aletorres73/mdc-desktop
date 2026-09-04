@@ -48,6 +48,12 @@ service cloud.firestore {
         allow create, update, delete: if isOwner(uid) && isSubscriptionActive(uid);
       }
 
+      // Registro independiente de movimientos y pagos
+      match /paymentRegister/{paymentId} {
+        allow read: if isOwner(uid) && isSubscriptionActive(uid);
+        allow create, update, delete: if isOwner(uid) && isSubscriptionActive(uid);
+      }
+
       // Fábricas - acceso solo si suscripción activa
       match /factories/{factoryId} {
         allow read: if isOwner(uid) && isSubscriptionActive(uid);

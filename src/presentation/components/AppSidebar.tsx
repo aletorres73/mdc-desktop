@@ -21,6 +21,7 @@ import {
   Factory,
   Calendar,
   CreditCard,
+  ClipboardList,
   Settings,
   LogOut,
   ChevronRight,
@@ -44,6 +45,7 @@ const NAV_ITEMS = [
   { href: ROUTES.FACTORIES, label: "Fábricas", icon: Factory },
   { href: ROUTES.AGENDA, label: "Agenda", icon: Calendar },
   { href: ROUTES.COMMISSIONS, label: "Comisiones", icon: CreditCard },
+  { href: ROUTES.PAYMENT_REGISTER, label: "Movimientos", icon: ClipboardList },
   { href: ROUTES.PROFILE, label: "Perfil", icon: Settings },
 ] as const;
 

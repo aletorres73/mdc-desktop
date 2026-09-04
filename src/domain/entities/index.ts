@@ -4,3 +4,4 @@ export * from "./client";
 export * from "./invoice";
 export * from "./order";
 export * from "./formatters";
+export * from "./paymentRegister";

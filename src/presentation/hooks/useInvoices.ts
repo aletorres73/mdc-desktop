@@ -32,6 +32,19 @@ export function useInvoices(filters: InvoiceFilters) {
   });
 }
 
+export function usePaymentRegister(filters?: { clientId?: string; branch?: string }) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["paymentRegister", user?.uid, filters],
+    queryFn: async () => {
+      if (!user?.uid) throw new Error("No user");
+      return container.paymentRegisterUseCase.getPayments(user.uid, filters);
+    },
+    enabled: !!user?.uid,
+    staleTime: 60 * 1000,
+  });
+}
+
 export function useInvoice(invoiceNumber: string | null) {
   const { user } = useAuth();
 

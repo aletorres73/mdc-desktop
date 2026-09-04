@@ -1,4 +1,5 @@
 import type { IInvoiceRepository } from "../repositories/IInvoiceRepository";
+import type { PaymentRegisterUseCase } from "./PaymentRegisterUseCase";
 import type { BillingModel, InvoiceFilters, InvoicePageDomain } from "../entities/invoice";
 import type { PaymentCondition } from "../entities/factory";
 import { InvoiceFilterService } from "../logic/invoiceFilterService";
@@ -15,7 +16,8 @@ import {
 
 export class InvoiceUseCase {
   constructor(
-    private invoiceRepo: IInvoiceRepository
+    private invoiceRepo: IInvoiceRepository,
+    private paymentRegisterUseCase?: PaymentRegisterUseCase
   ) {}
 
   async getPaginatedInvoices(
@@ -81,6 +83,10 @@ export class InvoiceUseCase {
   ): Promise<BillingModel> {
     const updated = applyInvoicePayment(billing, payment);
     await this.invoiceRepo.updateInvoice(uid, updated.billingNumber, updated);
+    const registeredPayment = updated.payments?.[updated.payments.length - 1];
+    if (registeredPayment && this.paymentRegisterUseCase) {
+      await this.paymentRegisterUseCase.registerPayment(uid, updated, registeredPayment);
+    }
     return updated;
   }
 

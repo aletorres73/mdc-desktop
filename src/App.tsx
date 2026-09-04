@@ -21,6 +21,7 @@ import Agenda from "@/presentation/pages/Agenda";
 import Commissions from "@/presentation/pages/Commissions";
 import Profile from "@/presentation/pages/Profile";
 import Subscription from "@/presentation/pages/Subscription";
+import PaymentRegister from "@/presentation/pages/PaymentRegister";
 import { ROUTES } from "@/presentation/routes/routes";
 
 const queryClient = new QueryClient({
@@ -65,6 +66,7 @@ function App() {
                 {/* Phase 4+: add more routes here */}
                 <Route path={ROUTES.AGENDA} element={<Agenda />} />
                 <Route path={ROUTES.COMMISSIONS} element={<Commissions />} />
+                <Route path={ROUTES.PAYMENT_REGISTER} element={<PaymentRegister />} />
                   </Route>
                 </Route>
               </Route>

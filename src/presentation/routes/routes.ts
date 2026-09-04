@@ -16,6 +16,7 @@ export const ROUTES = {
   COMMISSIONS: "/commissions",
   AGENDA: "/agenda",
   PROFILE: "/profile",
+  PAYMENT_REGISTER: "/payment-register",
 } as const;
 
 export function clientDetailRoute(clientId: string) {
