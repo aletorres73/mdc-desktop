@@ -16,8 +16,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
 import { buttonVariants } from "@/presentation/components/ui/button";
 import { cn, formatDate, formatMoney } from "@/lib/utils";
-import { invoiceDetailPath, orderDetailPath, createOrderPath } from "@/presentation/routes/routes";
-import { ArrowLeft, FileText, PackagePlus, Pencil, Save, ShoppingBag, X } from "lucide-react";
+import { invoiceDetailPath, orderDetailPath, createOrderPath, ROUTES } from "@/presentation/routes/routes";
+import { ArrowLeft, FileText, PackagePlus, Pencil, Plus, Save, ShoppingBag, X } from "lucide-react";
 
 export default function ClientDetail() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -173,7 +173,11 @@ export default function ClientDetail() {
             <Card className="border-border/50 shadow-sm">
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <div><CardTitle className="text-base">Cuenta corriente</CardTitle><p className="mt-1 text-sm text-muted-foreground">Facturación, pagos y saldo de este cliente.</p></div>
-                <FileText className="h-5 w-5 text-muted-foreground" />
+                <Link to={ROUTES.CREATE_INVOICE} className={cn(buttonVariants({ size: "sm" }))}>
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Nueva factura sin pedido</span>
+                  <span className="sm:hidden">Nueva factura</span>
+                </Link>
               </CardHeader>
               <CardContent>
                 {loadingInvoices ? <LoadingState /> : invoicesError ? (
