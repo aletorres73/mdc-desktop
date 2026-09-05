@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useClient } from "@/presentation/hooks/useClients";
@@ -11,12 +11,11 @@ import { Label } from "@/presentation/components/ui/label";
 import { Select } from "@/presentation/components/ui/select";
 import { Textarea } from "@/presentation/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
-import { formatMoney } from "@/lib/utils";
 import { clientDetailPath } from "@/presentation/routes/routes";
 import type { ArticleOrderModel } from "@/domain/entities/buyOrder";
 import { Plus, Trash2 } from "lucide-react";
 
-const emptyArticle: ArticleOrderModel = { name: "", color: "", delivered: 0, pairs: 0, value: 0 };
+const emptyArticle: ArticleOrderModel = { name: "", color: "", delivered: 0, pairs: 12, value: 0 };
 
 export default function CreateOrder() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -29,7 +28,6 @@ export default function CreateOrder() {
   const [factory, setFactory] = useState("");
   const [branch, setBranch] = useState("");
   const [paymentCondition, setPaymentCondition] = useState("");
-  const [discount, setDiscount] = useState("0");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [comments, setComments] = useState("");
   const [articles, setArticles] = useState<ArticleOrderModel[]>([{ ...emptyArticle }]);
@@ -51,18 +49,7 @@ export default function CreateOrder() {
     label: p.paymentName,
   }));
 
-  useEffect(() => {
-    if (selectedCondition) {
-      setDiscount(String(selectedCondition.discount));
-    }
-  }, [selectedCondition]);
-
-  const effectiveDiscount = selectedCondition ? selectedCondition.discount : parseFloat(discount) || 0;
-
-  const total = useMemo(() => {
-    const gross = articles.reduce((sum, a) => sum + (a.value ?? 0) * a.pairs, 0);
-    return gross * (1 - effectiveDiscount / 100);
-  }, [articles, effectiveDiscount]);
+  const effectiveDiscount = selectedCondition?.discount ?? 0;
 
   const updateArticle = (idx: number, patch: Partial<ArticleOrderModel>) => {
     setArticles((prev) => prev.map((a, i) => (i === idx ? { ...a, ...patch } : a)));
@@ -106,137 +93,153 @@ export default function CreateOrder() {
   };
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Nuevo pedido</h1>
-        <p className="text-sm text-muted-foreground">Cliente: {client?.clientName}</p>
+    <div className="flex w-full max-w-[1600px] flex-col gap-6 px-2 py-2 sm:px-3 lg:px-4">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Nuevo pedido</h1>
+          <p className="text-sm text-muted-foreground">Cliente: {client?.clientName}</p>
+        </div>
+        <div className="rounded-lg border border-border/50 bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm">
+          {factory ? `Fábrica: ${factory}` : "Sin fábrica seleccionada"}
+        </div>
       </div>
 
-      <Card className="border-border/50 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base">Datos generales</CardTitle>
-          <p className="text-sm text-muted-foreground">Los campos con * son obligatorios.</p>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>*Fábrica</Label>
-            <Select
-              options={factoryOptions}
-              placeholder="Seleccionar fábrica"
-              value={factory}
-              onChange={(e) => {
-                setFactory(e.target.value);
-                setBranch("");
-                setPaymentCondition("");
-              }}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Marca / Segmento</Label>
-            <Select options={branchOptions} placeholder="Seleccionar marca" value={branch} onChange={(e) => setBranch(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Condición de pago</Label>
-            <Select
-              options={conditionOptions}
-              placeholder="Seleccionar condición"
-              value={paymentCondition}
-              onChange={(e) => setPaymentCondition(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Descuento (%)</Label>
-            <Input
-              type="number"
-              value={effectiveDiscount}
-              onChange={(e) => {
-                if (!selectedCondition) setDiscount(e.target.value);
-              }}
-              readOnly={Boolean(selectedCondition)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Fecha de entrega</Label>
-            <Input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2.5fr)_320px]">
+        <div className="space-y-6">
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Datos generales</CardTitle>
+              <p className="text-sm text-muted-foreground">Los campos con * son obligatorios.</p>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>*Fábrica</Label>
+                <Select
+                  options={factoryOptions}
+                  placeholder="Seleccionar fábrica"
+                  value={factory}
+                  onChange={(e) => {
+                    setFactory(e.target.value);
+                    setBranch("");
+                    setPaymentCondition("");
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Marca / Segmento</Label>
+                <Select options={branchOptions} placeholder="Seleccionar marca" value={branch} onChange={(e) => setBranch(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Condición de pago</Label>
+                <Select
+                  options={conditionOptions}
+                  placeholder="Seleccionar condición"
+                  value={paymentCondition}
+                  onChange={(e) => setPaymentCondition(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Fecha de entrega</Label>
+                <Input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
+              </div>
+            </CardContent>
+          </Card>
 
-      <Card className="border-border/50 shadow-sm">
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Artículos</CardTitle>
-          <Button variant="outline" size="sm" onClick={() => setArticles((prev) => [...prev, { ...emptyArticle }])}>
-            <Plus className="h-4 w-4" />
-            Agregar
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Artículo</TableHead>
-                <TableHead>Color</TableHead>
-                <TableHead>Pares</TableHead>
-                <TableHead>Valor unit.</TableHead>
-                <TableHead className="w-10" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {articles.map((art, idx) => (
-                <TableRow key={idx}>
-                  <TableCell>
-                    <Input value={art.name} onChange={(e) => updateArticle(idx, { name: e.target.value })} />
-                  </TableCell>
-                  <TableCell>
-                    <Input value={art.color} onChange={(e) => updateArticle(idx, { color: e.target.value })} />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      value={art.pairs}
-                      onChange={(e) => updateArticle(idx, { pairs: parseInt(e.target.value, 10) || 0 })}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      value={art.value}
-                      onChange={(e) => updateArticle(idx, { value: parseFloat(e.target.value) || 0 })}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setArticles((prev) => prev.filter((_, i) => i !== idx))}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="mt-4 space-y-1.5">
-            <Label>Comentarios</Label>
-            <Textarea value={comments} onChange={(e) => setComments(e.target.value)} />
-          </div>
-        </CardContent>
-      </Card>
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Artículos</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setArticles((prev) => {
+                    const lastArticle = prev[prev.length - 1] ?? { ...emptyArticle };
+                    return [...prev, { ...emptyArticle, name: lastArticle.name }];
+                  })
+                }
+              >
+                <Plus className="h-4 w-4" />
+                Agregar
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Artículo</TableHead>
+                      <TableHead>Color</TableHead>
+                      <TableHead>Pares</TableHead>
+                      <TableHead className="w-10" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {articles.map((art, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>
+                          <Input value={art.name} onChange={(e) => updateArticle(idx, { name: e.target.value })} />
+                        </TableCell>
+                        <TableCell>
+                          <Input value={art.color} onChange={(e) => updateArticle(idx, { color: e.target.value })} />
+                        </TableCell>
+                        <TableCell className="align-middle">
+                          <Input
+                            type="number"
+                            min={0}
+                            step={12}
+                            value={art.pairs}
+                            onChange={(e) => {
+                              const rawValue = Number.parseInt(e.target.value, 10);
+                              const nextValue = Number.isFinite(rawValue) && rawValue >= 0 ? rawValue : 0;
+                              updateArticle(idx, { pairs: nextValue });
+                            }}
+                            onBlur={(e) => {
+                              const value = Number.parseInt(e.target.value, 10);
+                              if (!Number.isFinite(value) || value < 0) {
+                                updateArticle(idx, { pairs: 0 });
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setArticles((prev) => prev.filter((_, i) => i !== idx))}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="mt-4 space-y-1.5">
+                <Label>Comentarios</Label>
+                <Textarea value={comments} onChange={(e) => setComments(e.target.value)} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-      <div className="flex items-center justify-between rounded-lg border border-border/50 bg-card px-4 py-3 shadow-sm">
-        <span className="text-sm font-medium text-muted-foreground">Total estimado</span>
-        <span className="text-2xl font-bold tracking-tight tabular-nums">{formatMoney(total)}</span>
+        <div className="space-y-6">
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Acciones</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button className="w-full" onClick={handleSubmit} disabled={!canSubmit} loading={createOrder.isPending}>
+                {createOrder.isPending ? "Guardando..." : "Guardar pedido"}
+              </Button>
+              {!canSubmit && !createOrder.isPending && missing.length > 0 && (
+                <p className="text-sm text-muted-foreground">Falta: {missing.join(", ")}.</p>
+              )}
+              {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-
-      {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-
-      <Button onClick={handleSubmit} disabled={!canSubmit} loading={createOrder.isPending}>
-        {createOrder.isPending ? "Guardando..." : "Guardar pedido"}
-      </Button>
-      {!canSubmit && !createOrder.isPending && missing.length > 0 && (
-        <p className="text-sm text-muted-foreground">Falta: {missing.join(", ")}.</p>
-      )}
     </div>
   );
 }
