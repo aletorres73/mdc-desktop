@@ -96,7 +96,7 @@ export default function CreateInvoice() {
         </CardContent>
       </Card>
       {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-      <Button onClick={handleSubmit} disabled={!canSubmit}>{createInvoice.isPending ? "Guardando..." : "Crear factura"}</Button>
+      <Button onClick={handleSubmit} disabled={!canSubmit} loading={createInvoice.isPending}>{createInvoice.isPending ? "Guardando..." : "Crear factura"}</Button>
     </div>
   );
 }

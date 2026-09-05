@@ -38,7 +38,7 @@ export default function CreateOrder() {
   const validArticles = articles.filter((a) => a.name.trim() && a.pairs > 0);
   const missing: string[] = [];
   if (!factory) missing.push("fábrica");
-  if (!branch) missing.push("marca");
+  // if (!branch) missing.push("marca");
   if (validArticles.length === 0) missing.push("al menos un artículo con pares > 0");
   const canSubmit = !!client && missing.length === 0 && !createOrder.isPending;
 
@@ -74,8 +74,8 @@ export default function CreateOrder() {
       setError("El cliente todavía no se cargó. Esperá un momento e intentá de nuevo.");
       return;
     }
-    if (!factory || !branch) {
-      setError("Seleccioná una fábrica y una marca antes de guardar.");
+    if (!factory /*|| !branch*/) {
+      setError("Seleccioná una fábrica antes de guardar.");
       return;
     }
     if (validArticles.length === 0) {
@@ -115,10 +115,11 @@ export default function CreateOrder() {
       <Card className="border-border/50 shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Datos generales</CardTitle>
+          <p className="text-sm text-muted-foreground">Los campos con * son obligatorios.</p>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Fábrica</Label>
+            <Label>*Fábrica</Label>
             <Select
               options={factoryOptions}
               placeholder="Seleccionar fábrica"
@@ -131,7 +132,7 @@ export default function CreateOrder() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label>Marca</Label>
+            <Label>Marca / Segmento</Label>
             <Select options={branchOptions} placeholder="Seleccionar marca" value={branch} onChange={(e) => setBranch(e.target.value)} />
           </div>
           <div className="space-y-1.5">
@@ -230,7 +231,7 @@ export default function CreateOrder() {
 
       {error && <p className="text-sm font-medium text-destructive">{error}</p>}
 
-      <Button onClick={handleSubmit} disabled={!canSubmit}>
+      <Button onClick={handleSubmit} disabled={!canSubmit} loading={createOrder.isPending}>
         {createOrder.isPending ? "Guardando..." : "Guardar pedido"}
       </Button>
       {!canSubmit && !createOrder.isPending && missing.length > 0 && (

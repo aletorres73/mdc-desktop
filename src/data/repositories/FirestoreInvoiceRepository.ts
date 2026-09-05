@@ -1,7 +1,6 @@
 import {
   getDocument,
   setDocument,
-  addDocument,
   deleteDocument,
   where,
   orderBy,
@@ -84,10 +83,8 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
   }
 
   async createInvoice(uid: string, billing: BillingModel): Promise<string> {
-    if (billing.id) {
-      await setDocument(this.path(uid), billing.id, toBillingRemote(billing));
-      return billing.id;
-    }
+    const documentId = billing.id ?? billing.billingNumber.trim();
+    if (!documentId) throw new Error("El número de factura es obligatorio");
 
     const duplicate = billing.billingNumber ? await this.getInvoiceByBillingNumber(uid, billing.billingNumber) : null;
     if (duplicate?.id) {
@@ -95,7 +92,8 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
       return duplicate.id;
     }
 
-    return addDocument(this.path(uid), toBillingRemote(billing));
+    await setDocument(this.path(uid), documentId, toBillingRemote(billing));
+    return documentId;
   }
 
   async updateInvoice(uid: string, id: string, data: Partial<BillingModel>): Promise<void> {

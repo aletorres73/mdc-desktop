@@ -13,9 +13,9 @@ export class BuyOrderUseCase {
   }
 
   async createOrder(uid: string, order: Omit<BuyOrderModel, "id" | "order">): Promise<BuyOrderModel> {
-    const id = `order_${Date.now()}`;
     const orderNumber = await this.buyOrderRepo.nextOrderNumber(uid);
-    const full: BuyOrderModel = { ...order, id, order: String(orderNumber) };
+    const orderId = String(orderNumber);
+    const full: BuyOrderModel = { ...order, id: orderId, order: orderId };
     await this.buyOrderRepo.createBuyOrder(uid, full);
     return full;
   }

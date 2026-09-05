@@ -61,8 +61,8 @@ export default function Clients() {
               <Input id="clientId" value={newClientId} readOnly={true} onChange={(e) => setNewClientId(e.target.value)} />
             </div>
             <DialogFooter>
-              <Button onClick={handleCreate} disabled={createClient.isPending}>
-                Guardar
+              <Button onClick={handleCreate} loading={createClient.isPending}>
+                {createClient.isPending ? "Guardando..." : "Guardar"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -105,6 +105,8 @@ export default function Clients() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    loading={deleteClient.isPending && deleteClient.variables === client.clientId}
+                    disabled={deleteClient.isPending}
                     onClick={() => deleteClient.mutate(client.clientId)}
                     aria-label="Eliminar cliente"
                   >

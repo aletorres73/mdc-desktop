@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { useIsMutating } from "@tanstack/react-query";
 import {
   LayoutDashboard,
   Users,
@@ -26,9 +27,19 @@ const NAV_ITEMS = [
 
 export function AppLayout() {
   const { userProfile, signOut } = useAuth();
+  const pendingMutations = useIsMutating();
 
   return (
     <div className="flex min-h-screen w-full bg-muted/30">
+      {pendingMutations > 0 && (
+        <div
+          role="status"
+          aria-label="Procesando cambios"
+          className="pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden bg-primary/20"
+        >
+          <div className="animate-indeterminate-bar absolute h-full w-2/5 bg-primary" />
+        </div>
+      )}
       <aside className="flex w-60 shrink-0 flex-col border-r border-border/50 bg-muted/30 px-3 py-4">
         <div className="mb-6 px-2">
           <p className="text-lg font-bold tracking-tight">MDC</p>

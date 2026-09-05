@@ -86,6 +86,6 @@ export default function EditInvoice() {
       <div className="space-y-1.5"><Label>Total</Label><Input type="number" min="0" step="0.01" value={total} onChange={(event) => setTotal(event.target.value)} /></div>
     </CardContent></Card>
     {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-    <Button onClick={handleSave} disabled={updateInvoice.isPending}><Save className="h-4 w-4" />{updateInvoice.isPending ? "Guardando..." : "Guardar cambios"}</Button>
+    <Button onClick={handleSave} loading={updateInvoice.isPending}><Save className="h-4 w-4" />{updateInvoice.isPending ? "Guardando..." : "Guardar cambios"}</Button>
   </div>;
 }

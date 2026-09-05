@@ -128,7 +128,7 @@ export default function ClientDetail() {
                 </div>
                 {error && <p className="text-sm font-medium text-destructive">{error}</p>}
                 <div className="flex gap-2">
-                  <Button onClick={saveClient} disabled={updateClient.isPending}><Save className="h-4 w-4" />{updateClient.isPending ? "Guardando..." : "Guardar"}</Button>
+                  <Button onClick={saveClient} loading={updateClient.isPending}><Save className="h-4 w-4" />{updateClient.isPending ? "Guardando..." : "Guardar"}</Button>
                   <Button variant="outline" onClick={cancelEditing} disabled={updateClient.isPending}><X className="h-4 w-4" />Cancelar</Button>
                 </div>
               </div>

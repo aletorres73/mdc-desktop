@@ -75,8 +75,8 @@ export default function OrderDetail() {
               )}
             </div>
             <DialogFooter>
-              <Button onClick={handleCreateInvoice} disabled={createInvoice.isPending || hasDuplicateInvoice}>
-                Generar
+              <Button onClick={handleCreateInvoice} disabled={hasDuplicateInvoice} loading={createInvoice.isPending}>
+                {createInvoice.isPending ? "Generando..." : "Generar"}
               </Button>
             </DialogFooter>
           </DialogContent>

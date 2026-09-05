@@ -92,8 +92,8 @@ export default function InvoiceDetail() {
               </DialogHeader>
               <p className="text-sm text-muted-foreground">Esta acción no se puede deshacer.</p>
               <DialogFooter>
-                <Button variant="destructive" onClick={handleDelete} disabled={deleteInvoice.isPending}>
-                  Confirmar eliminación
+                <Button variant="destructive" onClick={handleDelete} loading={deleteInvoice.isPending}>
+                  {deleteInvoice.isPending ? "Eliminando..." : "Confirmar eliminación"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -149,8 +149,8 @@ export default function InvoiceDetail() {
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddPayment} disabled={applyPayment.isPending}>
-                  Guardar pago
+                <Button onClick={handleAddPayment} loading={applyPayment.isPending}>
+                  {applyPayment.isPending ? "Guardando..." : "Guardar pago"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -194,6 +194,8 @@ export default function InvoiceDetail() {
                         variant="ghost"
                         size="icon"
                         aria-label="Conciliar pago"
+                        loading={reconcilePayment.isPending && reconcilePayment.variables === m.id}
+                        disabled={reconcilePayment.isPending || deletePayment.isPending}
                         onClick={() => reconcilePayment.mutate(m.id)}
                       >
                         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
@@ -203,6 +205,8 @@ export default function InvoiceDetail() {
                       variant="ghost"
                       size="icon"
                       aria-label="Eliminar pago"
+                      loading={deletePayment.isPending && deletePayment.variables === m.id}
+                      disabled={reconcilePayment.isPending || deletePayment.isPending}
                       onClick={() => deletePayment.mutate(m.id)}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -229,6 +233,8 @@ export default function InvoiceDetail() {
           <div className="flex gap-2">
             <Input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Agregar comentario..." />
             <Button
+              aria-label="Agregar comentario"
+              loading={addComment.isPending}
               onClick={async () => {
                 if (!comment.trim()) return;
                 await addComment.mutateAsync(comment.trim());

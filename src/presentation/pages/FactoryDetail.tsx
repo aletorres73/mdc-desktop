@@ -96,8 +96,8 @@ export default function FactoryDetail() {
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">{decodedName}</h1>
         </div>
-        <Button variant="destructive" onClick={handleDelete}>
-          <Trash2 className="h-4 w-4" /> Eliminar
+        <Button variant="destructive" onClick={handleDelete} loading={deleteFactory.isPending}>
+          <Trash2 className="h-4 w-4" /> {deleteFactory.isPending ? "Eliminando..." : "Eliminar"}
         </Button>
       </div>
 
@@ -269,7 +269,7 @@ export default function FactoryDetail() {
       </Card>
 
       <div className="flex flex-col gap-2">
-        <Button onClick={handleSave} disabled={updateFactory.isPending}>
+        <Button onClick={handleSave} loading={updateFactory.isPending}>
           <Save className="h-4 w-4" /> {updateFactory.isPending ? "Guardando..." : "Guardar cambios"}
         </Button>
         {updateFactory.isSuccess && <p className="text-center text-sm text-emerald-600">Cambios guardados correctamente.</p>}

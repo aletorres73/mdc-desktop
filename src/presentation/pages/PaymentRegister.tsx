@@ -74,11 +74,25 @@ export default function PaymentRegister() {
                 </TableCell>
                 <TableCell className="flex gap-1">
                   {m.status !== "IMPUTADO" && (
-                    <Button variant="ghost" size="icon" aria-label="Conciliar" onClick={() => reconcile.mutate(m.id)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Conciliar"
+                      loading={reconcile.isPending && reconcile.variables === m.id}
+                      disabled={reconcile.isPending || remove.isPending}
+                      onClick={() => reconcile.mutate(m.id)}
+                    >
                       <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                     </Button>
                   )}
-                  <Button variant="ghost" size="icon" aria-label="Eliminar" onClick={() => remove.mutate(m.id)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Eliminar"
+                    loading={remove.isPending && remove.variables === m.id}
+                    disabled={reconcile.isPending || remove.isPending}
+                    onClick={() => remove.mutate(m.id)}
+                  >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </TableCell>

@@ -46,8 +46,8 @@ export default function Factories() {
             </DialogHeader>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de fábrica" />
             <DialogFooter>
-              <Button onClick={handleCreate} disabled={createFactory.isPending}>
-                Guardar
+              <Button onClick={handleCreate} loading={createFactory.isPending}>
+                {createFactory.isPending ? "Guardando..." : "Guardar"}
               </Button>
             </DialogFooter>
           </DialogContent>
