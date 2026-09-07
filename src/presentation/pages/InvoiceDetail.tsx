@@ -1,426 +1,251 @@
-"use client";
-
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "@/presentation/contexts/AuthContext";
 import {
+  useInvoice,
+  useDeleteInvoice,
   useAddInvoiceComment,
   useApplyInvoicePayment,
-  useInvoice,
-  useUpdateInvoiceDetails,
-  // useChangePaymentCondition,
-  useDeleteInvoice,
-  // useUpdateInvoicePayment,
-  // useDeleteInvoicePayment,
-  // useReconcileInvoicePayment,
-} from "../hooks/useInvoices";
-import { PageShell, PageHeader, KpiCard, DataTableShell, DataTableRow, DataTableCell, StatusBadge } from "../components/shared";
+  useDeleteInvoicePayment,
+  useReconcileInvoicePayment,
+} from "@/presentation/hooks/useInvoices";
+import { usePaymentRegister } from "@/presentation/hooks/usePaymentRegister";
 import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
+import { Badge, stateToBadgeVariant } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { Input } from "@/presentation/components/ui/input";
-import { Skeleton } from "@/presentation/components/ui/skeleton";
-import { ArrowLeft, AlertCircle, FileText, Share2, Wallet } from "lucide-react";
-import type { ArticleModel, BillingComments } from "@/domain/entities/invoice";
-import { toFormattedDate, toPrint } from "@/domain/entities/formatters";
-import { shareText } from "../utils/shareUtils";
-import { ReportGenerator } from "@/domain/logic/reportGenerator";
-import { ROUTES } from "../routes/routes";
-  
+import { Textarea } from "@/presentation/components/ui/textarea";
+import { Select } from "@/presentation/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/presentation/components/ui/dialog";
+import { LoadingState } from "@/presentation/components/shared/LoadingState";
+import { formatMoney, formatDate } from "@/lib/utils";
+import { editInvoicePath, ROUTES } from "@/presentation/routes/routes";
+import type { MovementMethod } from "@/domain/entities/paymentRegister";
+import { ArrowLeft, Pencil, Plus, Trash2, CheckCircle2 } from "lucide-react";
+
+const METHOD_OPTIONS: { value: MovementMethod; label: string }[] = [
+  { value: "EFECTIVO", label: "Efectivo" },
+  { value: "TRANSFERENCIA", label: "Transferencia" },
+  { value: "CHEQUE", label: "Cheque" },
+  { value: "PRONTO_PAGO", label: "Pronto pago" },
+  { value: "NOTA_CREDITO", label: "Nota de crédito" },
+  { value: "DESCUENTO_EXTRA", label: "Descuento extra" },
+];
+
 export default function InvoiceDetail() {
-  const { invoiceNumber } = useParams<{ invoiceNumber: string }>();
-  const { data: invoice, isLoading, error } = useInvoice(invoiceNumber ?? null);
-  const updateDetails = useUpdateInvoiceDetails();
-  const addComment = useAddInvoiceComment();
-  const applyPayment = useApplyInvoicePayment();
-  const deleteInvoice = useDeleteInvoice();
-  const [copied, setCopied] = useState(false);
-  const [commentDraft, setCommentDraft] = useState("");
-  const [paymentAmount, setPaymentAmount] = useState("0");
-  const [paymentType, setPaymentType] = useState<"real" | "virtual">("real");
-  const [paymentStatus, setPaymentStatus] = useState<"pendiente" | "imputado" | "conciliado">("imputado");
-  const [paymentNote, setPaymentNote] = useState("");
-  const [deliveryDateInput, setDeliveryDateInput] = useState("");
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { invoiceId } = useParams<{ invoiceId: string }>();
+  const navigate = useNavigate();
+  const { appUser } = useAuth();
+  const { data: invoice, isLoading } = useInvoice(appUser?.uid, invoiceId);
 
-  const handleShare = async () => {
-    if (!invoice) return;
-    const reportText = ReportGenerator.generateInvoiceReport(invoice);
-    const success = await shareText(reportText);
-    if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const deleteInvoice = useDeleteInvoice(appUser?.uid);
+  const addComment = useAddInvoiceComment(appUser?.uid, invoiceId!);
+  const applyPayment = useApplyInvoicePayment(appUser?.uid, invoiceId!);
+  const deletePayment = useDeleteInvoicePayment(appUser?.uid, invoiceId!);
+  const reconcilePayment = useReconcileInvoicePayment(appUser?.uid, invoiceId!);
+
+  const [comment, setComment] = useState("");
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState<MovementMethod>("TRANSFERENCIA");
+  const [notes, setNotes] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const { data: movements } = usePaymentRegister(appUser?.uid, { clientId: invoice?.clientId });
+  const invoiceMovements = (movements ?? []).filter((m) => m.documentNumber === invoice?.billingNumber);
+
+  if (isLoading) return <LoadingState className="min-h-[60vh]" />;
+  if (!invoice) return <p className="text-muted-foreground">Factura no encontrada.</p>;
+
+  const handleDelete = async () => {
+    await deleteInvoice.mutateAsync(invoiceId!);
+    navigate(ROUTES.INVOICES);
   };
 
-  const handleUpdateDeliveryDate = async () => {
-    if (!invoice || !deliveryDateInput) return;
-    const deliveryDate = new Date(deliveryDateInput).getTime();
-    await updateDetails.mutateAsync({
-      billing: invoice,
-      updates: {
-        deliveryDate,
-        comments: [...invoice.comments, { comments: `Fecha de recepción actualizada: ${toFormattedDate(deliveryDate)}`, date: Date.now() }],
-      },
-    });
-    setDeliveryDateInput("");
+  const handleAddPayment = async () => {
+    const value = parseFloat(amount);
+    if (!value) return;
+    await applyPayment.mutateAsync({ amount: value, method, notes });
+    setAmount("");
+    setNotes("");
+    setPaymentOpen(false);
   };
-
-  const handleAddComment = async () => {
-    if (!invoice || !commentDraft.trim()) return;
-    await addComment.mutateAsync({ billing: invoice, comment: commentDraft.trim() });
-    setCommentDraft("");
-  };
-
-  const handleApplyPayment = async () => {
-    if (!invoice) return;
-    const amount = Number(paymentAmount);
-    if (!amount || Number.isNaN(amount)) return;
-
-    await applyPayment.mutateAsync({
-      billing: invoice,
-      payment: {
-        amount,
-        type: paymentType,
-        status: paymentStatus,
-        note: paymentNote || (paymentType === "real" ? "Pago registrado" : "Mov. virtual aplicado"),
-        virtualType: paymentType === "virtual" ? "pronto-pago" : undefined,
-      },
-    });
-
-    setPaymentAmount("0");
-    setPaymentNote("");
-  };
-
-  const handleDeleteInvoice = async () => {
-    if (!invoice) return;
-    try {
-      await deleteInvoice.mutateAsync(invoice.billingNumber);
-      // Redirect to invoices list after deletion
-      setTimeout(() => {
-        window.location.href = `/${ROUTES.INVOICES}`;
-      }, 500);
-    } catch (err) {
-      console.error("Error deleting invoice:", err);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <PageShell>
-        <div className="space-y-6">
-          <Skeleton className="h-16 w-1/3 rounded-xl" />
-          <div className="grid gap-4 md:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
-          </div>
-          <Skeleton className="h-[300px] w-full rounded-xl" />
-        </div>
-      </PageShell>
-    );
-  }
-
-  if (error || !invoice) {
-    return (
-      <PageShell>
-        <div className="flex min-h-[50vh] w-full items-center justify-center p-6">
-          <div className="text-center">
-            <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Factura no encontrada</h2>
-            <p className="text-muted-foreground mb-4">No se pudo cargar la factura {invoiceNumber}</p>
-            <Link to={ROUTES.INVOICES}>
-              <Button variant="outline">Volver al listado</Button>
-            </Link>
-          </div>
-        </div>
-      </PageShell>
-    );
-  }
 
   return (
-    <PageShell maxWidth="default">
-      <PageHeader
-        title={`Factura ${invoice.billingNumber}`}
-        description={`Orden: ${invoice.orderId} • Cliente: ${invoice.clientName}`}
-        icon={FileText}
-        actions={
-          <div className="flex items-center gap-2">
-            <Link to={ROUTES.INVOICES}>
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Volver
-              </Button>
-            </Link>
-            <Button variant="outline" size="sm" onClick={handleShare}>
-              <Share2 className="mr-2 h-4 w-4" />
-              {copied ? "¡Copiado!" : "Compartir Factura"}
-            </Button>
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              onClick={() => setShowDeleteConfirm(true)}
-              disabled={deleteInvoice.isPending}
-            >
-              Eliminar
-            </Button>
-            <StatusBadge status={invoice.stateBilling || "Pendiente"} />
-          </div>
-        }
-      />
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Monto Total" value={toPrint(invoice.total)} icon={FileText} tone="primary" />
-        <KpiCard label="Monto a Cobrar" value={toPrint(invoice.toPay)} icon={Wallet} tone="info" />
-        <KpiCard label="Monto Pagado" value={toPrint(invoice.payed)} icon={Wallet} tone="success" />
-        <KpiCard label="Saldo Pendiente" value={toPrint(invoice.rest)} icon={AlertCircle} tone={invoice.rest > 0 ? "danger" : "success"} />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Cliente</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-base font-semibold">{invoice.clientName}</p>
-            <p className="text-xs text-muted-foreground">ID: {invoice.clientId}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Fábrica / Marca</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-base font-semibold">{invoice.brand}</p>
-            <p className="text-xs text-muted-foreground">Segmento: {invoice.branch || "General"}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Condición de Pago</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-base font-semibold">{invoice.paymentCondition || "Sin especificar"}</p>
-            <p className="text-xs text-muted-foreground">Descuento: {invoice.expectedDiscount}%</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Fechas Relevantes</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-xs">
-            <p><span className="text-muted-foreground">Emisión:</span> {toFormattedDate(invoice.loadDate)}</p>
-            <p><span className="text-muted-foreground">Recepción:</span> {toFormattedDate(invoice.deliveryDate)}</p>
-            <p><span className="text-muted-foreground">Vencimiento:</span> {toFormattedDate(invoice.payDate)}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">Registrar pago</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tipo</label>
-                <select
-                  value={paymentType}
-                  onChange={(e) => setPaymentType(e.target.value as "real" | "virtual")}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="real">Real</option>
-                  <option value="virtual">Virtual</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Estado</label>
-                <select
-                  value={paymentStatus}
-                  onChange={(e) => setPaymentStatus(e.target.value as "pendiente" | "imputado" | "conciliado")}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="imputado">Imputado</option>
-                  <option value="pendiente">Pendiente</option>
-                  <option value="conciliado">Conciliado</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Monto</label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nota</label>
-              <textarea
-                value={paymentNote}
-                onChange={(e) => setPaymentNote(e.target.value)}
-                rows={3}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none"
-                placeholder="Detalle del pago o movimiento virtual"
-              />
-            </div>
-
-            <Button
-              onClick={handleApplyPayment}
-              disabled={applyPayment.isPending || Number(paymentAmount) <= 0}
-              className="w-full"
-            >
-              {applyPayment.isPending ? "Guardando..." : "Guardar pago"}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">Actualizar recepción</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fecha de recepción</label>
-              <Input
-                type="date"
-                value={deliveryDateInput || (invoice.deliveryDate ? new Date(invoice.deliveryDate).toISOString().slice(0, 10) : "")}
-                onChange={(e) => setDeliveryDateInput(e.target.value)}
-              />
-            </div>
-            <Button
-              variant="outline"
-              onClick={handleUpdateDeliveryDate}
-              disabled={updateDetails.isPending || !deliveryDateInput}
-              className="w-full"
-            >
-              {updateDetails.isPending ? "Actualizando..." : "Guardar fecha"}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="border-border/50 shadow-sm bg-card">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Artículos ({invoice.articles.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {invoice.articles.length === 0 ? (
-            <p className="text-muted-foreground text-center py-6">Sin artículos cargados</p>
-          ) : (
-            <DataTableShell headers={["Artículo", "Color", "Importe", "Pares"]}>
-              {invoice.articles.map((article: ArticleModel, i: number) => (
-                <DataTableRow key={i}>
-                  <DataTableCell className="font-medium">{article.name}</DataTableCell>
-                  <DataTableCell>{article.color}</DataTableCell>
-                  <DataTableCell className="text-right font-medium">{toPrint(article.value)}</DataTableCell>
-                  <DataTableCell className="text-right font-mono">{article.pairs}</DataTableCell>
-                </DataTableRow>
-              ))}
-            </DataTableShell>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/50 shadow-sm bg-card">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Pagos registrados ({invoice.payments?.length ?? 0})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!invoice.payments || invoice.payments.length === 0 ? (
-            <p className="text-muted-foreground text-center py-6">Sin pagos registrados</p>
-          ) : (
-            <div className="space-y-3">
-              {invoice.payments.map((payment, i) => (
-                <div key={i} className="p-3 bg-muted/40 border border-border/40 rounded-lg space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold">
-                        {payment.type === "real" ? "Pago Real" : `Movimiento Virtual (${payment.virtualType || "Descuento"})`}
-                      </p>
-                      <p className="text-sm font-mono">{toPrint(payment.amount)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Estado: {payment.status} • {toFormattedDate(payment.date)}
-                      </p>
-                      {payment.note && <p className="text-xs text-muted-foreground mt-1">{payment.note}</p>}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/50 shadow-sm bg-card">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Comentarios ({invoice.comments.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <textarea
-              value={commentDraft}
-              onChange={(e) => setCommentDraft(e.target.value)}
-              rows={3}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none"
-              placeholder="Agregar un comentario a la factura"
-            />
-            <Button
-              variant="outline"
-              onClick={handleAddComment}
-              disabled={addComment.isPending || !commentDraft.trim()}
-              className="w-full"
-            >
-              {addComment.isPending ? "Guardando..." : "Agregar comentario"}
-            </Button>
-          </div>
-
-          {invoice.comments.length > 0 && (
-            <div className="space-y-3">
-              {invoice.comments.map((comment: BillingComments, i: number) => (
-                <div key={i} className="p-3 bg-muted/40 border border-border/40 rounded-lg space-y-1">
-                  <p className="text-sm">{comment.comments}</p>
-                  <p className="text-xs text-muted-foreground">{toFormattedDate(comment.date)}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="w-full max-w-sm shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">Eliminar Factura</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                ¿Está seguro de que desea eliminar la factura <strong>{invoice.billingNumber}</strong>? Esta acción no se puede deshacer.
-              </p>
-              <div className="flex gap-3 justify-end">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowDeleteConfirm(false)}
-                  disabled={deleteInvoice.isPending}
-                >
-                  Cancelar
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <Link to={ROUTES.INVOICES} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-3.5 w-3.5" /> Facturas
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight">Factura #{invoice.billingNumber}</h1>
+          <p className="text-sm text-muted-foreground">{invoice.clientName} · {invoice.brand}</p>
+        </div>
+        <div className="flex gap-2">
+          <Link to={editInvoicePath(invoiceId!)}><Button variant="outline"><Pencil className="h-4 w-4" />Editar</Button></Link>
+          <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+            <DialogTrigger render={<Button variant="destructive"><Trash2 className="h-4 w-4" />Eliminar</Button>} />
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Eliminar factura</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">Esta acción no se puede deshacer.</p>
+              <DialogFooter>
+                <Button variant="destructive" onClick={handleDelete} loading={deleteInvoice.isPending}>
+                  {deleteInvoice.isPending ? "Eliminando..." : "Confirmar eliminación"}
                 </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={handleDeleteInvoice}
-                  disabled={deleteInvoice.isPending}
-                >
-                  {deleteInvoice.isPending ? "Eliminando..." : "Eliminar"}
-                </Button>
-              </div>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+        {[
+          { label: "Total", value: formatMoney(invoice.total) },
+          { label: "Pagado", value: formatMoney(invoice.payed) },
+          { label: "Saldo", value: formatMoney(invoice.rest) },
+          { label: "Vencimiento", value: formatDate(invoice.payDate) },
+        ].map((item) => (
+          <Card key={item.label} className="border-border/50 shadow-sm">
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+              <p className="text-2xl font-bold tracking-tight tabular-nums">{item.value}</p>
             </CardContent>
           </Card>
-        </div>
-      )}
-    </PageShell>
+        ))}
+      </div>
+
+      <div>
+        <Badge variant={stateToBadgeVariant(invoice.stateBilling)}>{invoice.stateBilling}</Badge>
+      </div>
+
+      <Card className="border-border/50 shadow-sm">
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">Pagos registrados</CardTitle>
+          <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
+            <DialogTrigger render={<Button size="sm"><Plus className="h-4 w-4" />Registrar pago</Button>} />
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Registrar pago</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Monto</label>
+                  <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Método</label>
+                  <Select
+                    options={METHOD_OPTIONS}
+                    value={method}
+                    onChange={(e) => setMethod(e.target.value as MovementMethod)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Notas</label>
+                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleAddPayment} loading={applyPayment.isPending}>
+                  {applyPayment.isPending ? "Guardando..." : "Guardar pago"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead>Monto</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="w-20" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {!invoiceMovements.length && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    Sin pagos registrados
+                  </TableCell>
+                </TableRow>
+              )}
+              {invoiceMovements.map((m) => (
+                <TableRow key={m.id}>
+                  <TableCell className="text-muted-foreground">{formatDate(m.date)}</TableCell>
+                  <TableCell>
+                    {m.method}
+                    {m.isVirtual && <Badge variant="info" className="ml-2">Virtual</Badge>}
+                  </TableCell>
+                  <TableCell className="tabular-nums">{formatMoney(m.total)}</TableCell>
+                  <TableCell>
+                    <Badge variant={m.status === "IMPUTADO" ? "success" : "muted"}>
+                      {m.status === "IMPUTADO" ? "Conciliado" : "Pendiente"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="flex gap-1">
+                    {m.status !== "IMPUTADO" && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Conciliar pago"
+                        loading={reconcilePayment.isPending && reconcilePayment.variables === m.id}
+                        disabled={reconcilePayment.isPending || deletePayment.isPending}
+                        onClick={() => reconcilePayment.mutate(m.id)}
+                      >
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Eliminar pago"
+                      loading={deletePayment.isPending && deletePayment.variables === m.id}
+                      disabled={reconcilePayment.isPending || deletePayment.isPending}
+                      onClick={() => deletePayment.mutate(m.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/50 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Comentarios</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {invoice.comments.map((c, idx) => (
+            <div key={idx} className="rounded-md bg-muted/40 px-3 py-2 text-sm">
+              <p>{c.comments}</p>
+              <p className="text-xs text-muted-foreground">{formatDate(c.date)}</p>
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <Input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Agregar comentario..." />
+            <Button
+              aria-label="Agregar comentario"
+              loading={addComment.isPending}
+              onClick={async () => {
+                if (!comment.trim()) return;
+                await addComment.mutateAsync(comment.trim());
+                setComment("");
+              }}
+            >
+              <CheckCircle2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

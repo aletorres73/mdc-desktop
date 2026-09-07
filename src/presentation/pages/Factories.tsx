@@ -1,149 +1,113 @@
-"use client";
-
 import { useState } from "react";
-import { useFactories, useDeleteFactory } from "../hooks/useFactories";
-import type { FactoryModel } from "@/domain/entities/factory";
-import { PageShell, PageHeader, DataTableShell, DataTableRow, DataTableCell, DataState } from "../components/shared";
-import { Input } from "@/presentation/components/ui/input";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/presentation/contexts/AuthContext";
+import { useFactories, useCreateFactory } from "@/presentation/hooks/useFactories";
 import { Button } from "@/presentation/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
-import { Search, Plus, Trash2, Edit, Factory, RefreshCw } from "lucide-react";
-import { FactoryForm } from "../components/FactoryForm";
+import { Input } from "@/presentation/components/ui/input";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/presentation/components/ui/dialog";
+import { LoadingState } from "@/presentation/components/shared/LoadingState";
+import { EmptyState } from "@/presentation/components/shared/EmptyState";
+import { factoryDetailPath } from "@/presentation/routes/routes";
+import { Factory, Plus } from "lucide-react";
 
 export default function Factories() {
-  const [search, setSearch] = useState("");
-  const [editingFactory, setEditingFactory] = useState<FactoryModel | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const { appUser } = useAuth();
+  const { data: factories, isLoading } = useFactories(appUser?.uid);
+  const createFactory = useCreateFactory(appUser?.uid);
 
-  const { data: factories, isLoading, error, refetch } = useFactories();
-  const deleteFactory = useDeleteFactory();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
 
-  const filteredFactories = factories?.filter((f) =>
-    f.name.toLowerCase().includes(search.toLowerCase())
-  ) ?? [];
-
-  const handleDelete = async (name: string) => {
-    if (!confirm(`¿Eliminar fábrica "${name}"?`)) return;
-    try {
-      await deleteFactory.mutateAsync(name);
-    } catch (err) {
-      console.error("Error deleting factory:", err);
-    }
-  };
-
-  const handleEdit = (factory: FactoryModel) => {
-    setEditingFactory(factory);
-  };
-
-  const handleCreate = () => {
-    setIsCreateDialogOpen(true);
-  };
-
-  const handleFormSuccess = () => {
-    setEditingFactory(null);
-    setIsCreateDialogOpen(false);
-  };
-
-  const handleFormCancel = () => {
-    setEditingFactory(null);
-    setIsCreateDialogOpen(false);
+  const handleCreate = async () => {
+    if (!name.trim()) return;
+    await createFactory.mutateAsync({
+      name: name.trim(),
+      branchList: [],
+      paymentType: [],
+      defaultCommission: 0,
+      segmentCommissions: {},
+    });
+    setName("");
+    setOpen(false);
   };
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Fábricas"
-        description="Gestión de fábricas, marcas y condiciones comerciales"
-        icon={Factory}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="mr-2 h-4 w-4" /> Actualizar
-            </Button>
-            <Button size="sm" onClick={handleCreate}>
-              <Plus className="mr-2 h-4 w-4" /> Nueva fábrica
-            </Button>
-          </div>
-        }
-      />
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Fábricas</h1>
+          <p className="text-sm text-muted-foreground">Condiciones de pago y comisiones por fábrica.</p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger render={<Button><Plus className="h-4 w-4" />Nueva fábrica</Button>} />
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nueva fábrica</DialogTitle>
+            </DialogHeader>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de fábrica" />
+            <DialogFooter>
+              <Button onClick={handleCreate} loading={createFactory.isPending}>
+                {createFactory.isPending ? "Guardando..." : "Guardar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-      <Card className="border-border/50 shadow-sm bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Buscar fábricas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por nombre de fábrica..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {isLoading ? (
+        <LoadingState />
+      ) : !factories?.length ? (
+        <EmptyState icon={Factory} title="Sin fábricas" description="Creá la primera fábrica para configurar comisiones." />
+      ) : (
+        <div className="space-y-3">
+          {factories.map((f) => (
+            <div key={f.name} className="rounded-lg border border-border/60 bg-card p-4 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <Link to={factoryDetailPath(f.name)} className="text-base font-semibold hover:underline">
+                    {f.name}
+                  </Link>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Segmentos: {f.branchList.join(", ") || "Sin segmentos"}
+                  </p>
+                </div>
+                <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-right">
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Comisión global</p>
+                  <p className="tabular-nums font-semibold">{(f.defaultCommission * 100).toFixed(1)}%</p>
+                </div>
+              </div>
 
-      <DataState
-        isLoading={isLoading}
-        error={error}
-        isEmpty={filteredFactories.length === 0}
-        emptyTitle="No se encontraron fábricas"
-        emptyDescription="Prueba con otro término de búsqueda o crea una fábrica."
-      >
-        <DataTableShell headers={["Fábrica", "Marcas", "Comisión base", "Condiciones", "Acciones"]}>
-          {filteredFactories.map((factory) => (
-            <DataTableRow key={factory.name}>
-              <DataTableCell className="font-semibold">{factory.name}</DataTableCell>
-              <DataTableCell>
-                <span className="text-sm font-medium">{factory.branchList.length} marcas</span>
-                <div className="text-xs text-muted-foreground truncate max-w-xs">
-                  {factory.branchList.join(", ") || "Sin marcas"}
+              {Object.keys(f.segmentCommissions || {}).length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {Object.entries(f.segmentCommissions || {}).map(([segment, value]) => (
+                    <span key={segment} className="rounded-full border border-border/60 bg-muted/20 px-2.5 py-1 text-xs">
+                      {segment}: {(value * 100).toFixed(1)}%
+                    </span>
+                  ))}
                 </div>
-              </DataTableCell>
-              <DataTableCell className="font-semibold text-primary">{factory.defaultCommission}%</DataTableCell>
-              <DataTableCell className="text-muted-foreground text-sm">{factory.paymentType.length} condiciones</DataTableCell>
-              <DataTableCell className="text-right">
-                <div className="flex items-center justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEdit(factory)}
-                    title="Editar"
-                  >
-                    <Edit className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(factory.name)}
-                    disabled={deleteFactory.isPending}
-                    title="Eliminar"
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+              )}
+
+              {f.paymentType.length > 0 && (
+                <div className="mt-3 border-t border-border/50 pt-3">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">Condiciones de pago</p>
+                  <div className="flex flex-wrap gap-2">
+                    {f.paymentType.map((condition) => (
+                      <span
+                        key={condition.paymentName}
+                        className="rounded-full border border-border/60 bg-muted/20 px-2.5 py-1 text-xs"
+                      >
+                        {condition.paymentName || "Sin nombre"}
+                        {condition.expiration > 0 && ` · ${condition.expiration} días`}
+                        {condition.discount > 0 && ` · ${condition.discount}% dto.`}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </DataTableCell>
-            </DataTableRow>
+              )}
+            </div>
           ))}
-        </DataTableShell>
-      </DataState>
-
-      {isCreateDialogOpen && (
-        <FactoryForm
-          factory={null}
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormCancel}
-        />
+        </div>
       )}
-
-      {editingFactory && (
-        <FactoryForm
-          factory={editingFactory}
-          onSuccess={handleFormSuccess}
-          onCancel={handleFormCancel}
-        />
-      )}
-    </PageShell>
+    </div>
   );
 }

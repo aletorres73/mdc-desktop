@@ -1,221 +1,123 @@
-"use client";
-
-import { useState, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { useClients, useCreateClient, useDeleteClient } from "../hooks/useClients";
-import { PageShell, PageHeader, DataTableShell, DataTableRow, DataTableCell, DataState } from "../components/shared";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/presentation/contexts/AuthContext";
+import { useClients, useCreateClient, useDeleteClient, useSuggestedClientId } from "@/presentation/hooks/useClients";
 import { Input } from "@/presentation/components/ui/input";
 import { Button } from "@/presentation/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/presentation/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
+import { LoadingState } from "@/presentation/components/shared/LoadingState";
+import { EmptyState } from "@/presentation/components/shared/EmptyState";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/presentation/components/ui/dialog";
 import { Label } from "@/presentation/components/ui/label";
-import { Search, Plus, Trash2, Loader2, Users } from "lucide-react";
-import type { ClientFilters } from "@/domain/entities/client";
-import { clientDetailRoute } from "../routes/routes";
+import { clientDetailPath } from "@/presentation/routes/routes";
+import { Search, UserPlus, Users, Trash2 } from "lucide-react";
 
 export default function Clients() {
-  const navigate = useNavigate();
-  const [filters, setFilters] = useState<ClientFilters>({ search: "" });
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newClientId, setNewClientId] = useState("");
+  const { appUser } = useAuth();
+  const [search, setSearch] = useState("");
   const [newClientName, setNewClientName] = useState("");
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [newClientId, setNewClientId] = useState("");
+  const [open, setOpen] = useState(false);
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error } = useClients(filters);
-  const createClient = useCreateClient();
-  const deleteClient = useDeleteClient();
+  const { data: clients, isLoading } = useClients(appUser?.uid, search);
+  const createClient = useCreateClient(appUser?.uid);
+  const deleteClient = useDeleteClient(appUser?.uid);
+  const { data: suggestedId } = useSuggestedClientId(appUser?.uid, open);
 
-  const clients = data?.pages.flatMap((page) => page.items) ?? [];
-
-  const handleSearchChange = useCallback((value: string) => {
-    setFilters((prev) => ({ ...prev, search: value }));
-  }, []);
+  useEffect(() => {
+    if (open && suggestedId) setNewClientId(suggestedId);
+  }, [open, suggestedId]);
 
   const handleCreate = async () => {
-    if (!newClientId.trim() || !newClientName.trim()) return;
-    try {
-      await createClient.mutateAsync({ clientId: newClientId.trim(), clientName: newClientName.trim() });
-      setNewClientId("");
-      setNewClientName("");
-      setIsCreateDialogOpen(false);
-    } catch (err) {
-      console.error("Error creating client:", err);
-    }
-  };
-
-  const handleDelete = async (clientId: string) => {
-    try {
-      await deleteClient.mutateAsync(clientId);
-      setDeleteConfirmId(null);
-    } catch (err) {
-      console.error("Error deleting client:", err);
-    }
+    if (!newClientName.trim()) return;
+    await createClient.mutateAsync({
+      clientName: newClientName.trim(),
+      clientId: newClientId.trim() || undefined,
+    });
+    setNewClientName("");
+    setNewClientId("");
+    setOpen(false);
   };
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Clientes"
-        description="Gestión de clientes y cartera comercial"
-        icon={Users}
-        actions={
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger
-              render={
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nuevo cliente
-                </Button>
-              }
-            />
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Crear cliente</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="clientId">ID del cliente</Label>
-                  <Input
-                    id="clientId"
-                    value={newClientId}
-                    onChange={(e) => setNewClientId(e.target.value)}
-                    placeholder="ID único"
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="clientName">Razón Social</Label>
-                  <Input
-                    id="clientName"
-                    value={newClientName}
-                    onChange={(e) => setNewClientName(e.target.value)}
-                    placeholder="Nombre del cliente"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleCreate} disabled={createClient.isPending || !newClientId.trim() || !newClientName.trim()}>
-                  {createClient.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creando...
-                    </>
-                  ) : (
-                    "Crear"
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        }
-      />
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Clientes</h1>
+          <p className="text-sm text-muted-foreground">Gestión de la cartera de clientes.</p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger render={<Button><UserPlus className="h-4 w-4" />Nuevo cliente</Button>} />
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nuevo cliente</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-1.5">
+              <Label htmlFor="clientName">Razón social</Label>
+              <Input id="clientName" value={newClientName} onChange={(e) => setNewClientName(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="clientId">ID asignado</Label>
+              <Input id="clientId" value={newClientId} readOnly={true} onChange={(e) => setNewClientId(e.target.value)} />
+            </div>
+            <DialogFooter>
+              <Button onClick={handleCreate} loading={createClient.isPending}>
+                {createClient.isPending ? "Guardando..." : "Guardar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-      <Card className="border-border/50 shadow-sm bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Buscar clientes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por razón social..."
-              value={filters.search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por razón social..."
+          className="pl-9"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
 
-      <DataState
-        isLoading={isLoading}
-        error={error}
-        isEmpty={clients.length === 0}
-        emptyTitle="No se encontraron clientes"
-        emptyDescription="Prueba con otra búsqueda o crea un nuevo cliente."
-      >
-        <DataTableShell headers={["ID", "Razón Social", "Acciones"]}>
-          {clients.map((client) => (
-            <DataTableRow
-              key={client.clientId}
-              onClick={() => navigate(clientDetailRoute(client.clientId))}
-            >
-              <DataTableCell className="font-mono text-sm">{client.clientId}</DataTableCell>
-              <DataTableCell>
-                <Link className="font-medium hover:underline" to={clientDetailRoute(client.clientId)}>
-                  {client.clientName}
-                </Link>
-              </DataTableCell>
-              <DataTableCell className="w-24 text-right">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeleteConfirmId(client.clientId);
-                  }}
-                  disabled={deleteClient.isPending}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </DataTableCell>
-            </DataTableRow>
-          ))}
-        </DataTableShell>
-
-        {hasNextPage && (
-          <div className="mt-4 flex justify-center">
-            <Button
-              variant="outline"
-              onClick={() => fetchNextPage()}
-              disabled={isFetchingNextPage}
-              className="w-full max-w-xs"
-            >
-              {isFetchingNextPage ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Cargando más...
-                </>
-              ) : (
-                "Cargar más clientes"
-              )}
-            </Button>
-          </div>
-        )}
-      </DataState>
-
-      <Dialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Eliminar cliente</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            ¿Estás seguro de que querés eliminar este cliente? Esta acción no se puede deshacer.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
-              disabled={deleteClient.isPending}
-            >
-              {deleteClient.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Eliminando...
-                </>
-              ) : (
-                "Eliminar"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </PageShell>
+      {isLoading ? (
+        <LoadingState />
+      ) : !clients?.length ? (
+        <EmptyState icon={Users} title="Sin clientes" description="Creá el primer cliente para empezar." />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Cliente ID</TableHead>
+              <TableHead>Razón social</TableHead>
+              <TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {clients.map((client) => (
+              <TableRow key={client.clientId}>
+                <TableCell className="text-muted-foreground">{client.clientId}</TableCell>
+                <TableCell>
+                  <Link to={clientDetailPath(client.clientId)} className="font-medium hover:underline">
+                    {client.clientName}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    loading={deleteClient.isPending && deleteClient.variables === client.clientId}
+                    disabled={deleteClient.isPending}
+                    onClick={() => deleteClient.mutate(client.clientId)}
+                    aria-label="Eliminar cliente"
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
   );
 }

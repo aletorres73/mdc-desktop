@@ -1,30 +1,3 @@
-export interface ArticleOrderModel {
-  name: string;
-  color: string;
-  delivered: number;
-  pairs: number;
-  value?: number; // Precio unitario del artículo
-}
-
-export interface BuyOrderModel {
-  id: string;
-  clientId: string;
-  order: string;
-  client: string;
-  factory: string;
-  branch: string;
-  deliveryDate: number;
-  type: string;
-  billing: string;
-  comments: string;
-  articles: ArticleOrderModel[];
-  loadedDate: number;
-  paymentCondition: string;
-  discount: number;
-  expirationDays: number;
-  timeStamp: number;
-}
-
 export interface OrderModel {
   orderNumber: string;
   nameClient: string;
@@ -49,9 +22,4 @@ export interface OrderModel {
   checked: string | null;
   calendar: string | null;
   date: number;
-}
-
-export interface OrderFilters {
-  factory: string;
-  search: string;
 }

@@ -1,89 +1,56 @@
-import { useCommissions } from "../hooks/useCommissions";
-import { PageShell, PageHeader, KpiCard, DataTableShell, DataTableRow, DataTableCell, DataState } from "../components/shared";
-import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
-import { CreditCard, DollarSign, Factory, TrendingUp } from "lucide-react";
-import { toPrint } from "@/domain/entities/formatters";
+import { useMemo } from "react";
+import { useAuth } from "@/presentation/contexts/AuthContext";
+import { useCommissionSummary } from "@/presentation/hooks/useCommissions";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
+import { KpiCard } from "@/presentation/components/shared/KpiCard";
+import { LoadingState } from "@/presentation/components/shared/LoadingState";
+import { EmptyState } from "@/presentation/components/shared/EmptyState";
+import { formatMoney } from "@/lib/utils";
+import { Percent } from "lucide-react";
 
 export default function Commissions() {
-  const { data: summaries, isLoading, error } = useCommissions();
+  const { appUser } = useAuth();
+  const { data: summary, isLoading } = useCommissionSummary(appUser?.uid);
 
-  const totalEarned = (summaries || []).reduce((sum, s) => sum + s.totalCommissionEarned, 0);
-  const totalCollected = (summaries || []).reduce((sum, s) => sum + s.totalCollected, 0);
+  const totalCommission = useMemo(() => (summary ?? []).reduce((sum, s) => sum + s.commission, 0), [summary]);
+
+  if (isLoading) return <LoadingState className="min-h-[60vh]" />;
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Comisiones"
-        description="Cálculo de comisiones ganadas por fábrica y segmento comercial"
-        icon={CreditCard}
-      />
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <KpiCard
-          label="Total Comisiones Ganadas"
-          value={toPrint(totalEarned)}
-          icon={DollarSign}
-          tone="success"
-        />
-        <KpiCard
-          label="Total Cobrado Generado"
-          value={toPrint(totalCollected)}
-          icon={TrendingUp}
-          tone="primary"
-        />
-        <KpiCard
-          label="Fábricas Activas"
-          value={summaries?.length ?? 0}
-          icon={Factory}
-          tone="info"
-        />
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Comisiones</h1>
+        <p className="text-sm text-muted-foreground">Cálculo de comisiones por factura y fábrica.</p>
       </div>
 
-      <DataState
-        isLoading={isLoading}
-        error={error}
-        isEmpty={!summaries || summaries.length === 0}
-        emptyTitle="No hay datos de comisiones"
-        emptyDescription="Configura fábricas y registra facturas para ver los cálculos."
-      >
-        <div className="grid gap-6 md:grid-cols-2">
-          {(summaries || []).map((summary) => (
-            <Card key={summary.factoryName} className="border-border/50 shadow-sm bg-card">
-              <CardHeader className="pb-3 border-b border-border/40">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-bold">{summary.factoryName}</CardTitle>
-                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                    Base: {summary.defaultCommission}%
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm mt-2 pt-2 text-muted-foreground border-t border-border/30">
-                  <span>Cobrado: {toPrint(summary.totalCollected)}</span>
-                  <span className="font-semibold text-primary">Comisión: {toPrint(summary.totalCommissionEarned)}</span>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-3">
-                  Desglose por Segmento
-                </p>
-                {Object.keys(summary.segmentBreakdown).length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-3">Sin desglose por segmento</p>
-                ) : (
-                  <DataTableShell headers={["Segmento", "Tasa", "Cobrado", "Comisión"]}>
-                    {Object.entries(summary.segmentBreakdown).map(([segment, data]) => (
-                      <DataTableRow key={segment}>
-                        <DataTableCell className="font-medium">{segment}</DataTableCell>
-                        <DataTableCell>{data.rate}%</DataTableCell>
-                        <DataTableCell className="text-right text-muted-foreground">{toPrint(data.collected)}</DataTableCell>
-                        <DataTableCell className="text-right font-semibold text-emerald-600">{toPrint(data.commission)}</DataTableCell>
-                      </DataTableRow>
-                    ))}
-                  </DataTableShell>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </DataState>
-    </PageShell>
+      <KpiCard label="Comisión total" value={formatMoney(totalCommission)} icon={Percent} tone="emerald" className="max-w-xs" />
+
+      {!summary?.length ? (
+        <EmptyState icon={Percent} title="Sin datos" description="No hay facturación para calcular comisiones." />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Factura</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Fábrica</TableHead>
+              <TableHead>Total</TableHead>
+              <TableHead>Comisión</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {summary.map((row) => (
+              <TableRow key={row.billingNumber}>
+                <TableCell>{row.billingNumber}</TableCell>
+                <TableCell className="max-w-[180px] truncate">{row.clientName}</TableCell>
+                <TableCell>{row.brand}</TableCell>
+                <TableCell className="tabular-nums">{formatMoney(row.total)}</TableCell>
+                <TableCell className="tabular-nums font-medium text-emerald-600">{formatMoney(row.commission)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
   );
 }

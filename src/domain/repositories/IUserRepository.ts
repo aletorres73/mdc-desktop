@@ -1,6 +1,7 @@
-import type { UserModel } from "../entities/user";
+import type { UserModel } from "@/domain/entities/user";
 
 export interface IUserRepository {
-  getUserProfile(uid: string): Promise<UserModel | null>;
-  updateUserProfile(uid: string, data: Partial<UserModel>): Promise<void>;
+  getUser(uid: string): Promise<UserModel | null>;
+  createUser(user: UserModel): Promise<void>;
+  updateUser(uid: string, data: Partial<UserModel>): Promise<void>;
 }

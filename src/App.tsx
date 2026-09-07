@@ -9,7 +9,9 @@ import SignUp from "@/presentation/pages/SignUp";
 import ForgotPassword from "@/presentation/pages/ForgotPassword";
 import Home from "@/presentation/pages/Home";
 import Invoices from "@/presentation/pages/Invoices";
+import CreateInvoice from "@/presentation/pages/CreateInvoice";
 import InvoiceDetail from "@/presentation/pages/InvoiceDetail";
+import EditInvoice from "@/presentation/pages/EditInvoice";
 import Clients from "@/presentation/pages/Clients";
 import ClientDetail from "@/presentation/pages/ClientDetail";
 import Orders from "@/presentation/pages/Orders";
@@ -55,7 +57,9 @@ function App() {
                   <Route element={<AppLayout />}>
                 <Route path={ROUTES.HOME} element={<Home />} />
                 <Route path={ROUTES.INVOICES} element={<Invoices />} />
+                <Route path={ROUTES.CREATE_INVOICE} element={<CreateInvoice />} />
                 <Route path={ROUTES.INVOICE_DETAIL} element={<InvoiceDetail />} />
+                <Route path={ROUTES.EDIT_INVOICE} element={<EditInvoice />} />
                 <Route path={ROUTES.CLIENTS} element={<Clients />} />
                 <Route path={ROUTES.CLIENT_DETAIL} element={<ClientDetail />} />
                 <Route path={ROUTES.ORDERS} element={<Orders />} />

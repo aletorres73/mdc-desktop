@@ -1,12 +1,10 @@
-import type { AppUser } from "../entities/user";
+import type { AppUser } from "@/domain/entities/user";
 
 export interface IAuthRepository {
   signIn(email: string, password: string): Promise<AppUser>;
-  signUp(email: string, password: string, displayName?: string): Promise<AppUser>;
+  signUp(email: string, password: string): Promise<AppUser>;
   signOut(): Promise<void>;
-  updatePassword(newPassword: string): Promise<void>;
-  reauthenticate(password: string): Promise<void>;
-  deleteUser(): Promise<void>;
-  sendPasswordReset(email: string): Promise<void>;
-  onAuthStateChange(callback: (user: AppUser | null) => void): () => void;
+  resetPassword(email: string): Promise<void>;
+  getCurrentUser(): AppUser | null;
+  onAuthStateChanged(callback: (user: AppUser | null) => void): () => void;
 }

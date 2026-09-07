@@ -1,50 +1,119 @@
+import {
+  getCollection,
+  getCollectionGroup,
+  getDocument,
+  setDocument,
+  updateDocument,
+  deleteDocument,
+  where,
+} from "@/data/datasources/firestore";
+import { toClientDomain, toClientRemote } from "@/data/mappers/clientMapper";
+import type { RemoteResultClientModel } from "@/data/remote/remoteClient";
 import type { IClientRepository } from "@/domain/repositories/IClientRepository";
 import type { ClientModel } from "@/domain/entities/client";
-import { getCollection, getDocument, setDocument, updateDocument, deleteDocument } from "../datasources";
-import type { RemoteResultClientModel } from "../remote/remoteResultClient";
-import { toClientDomain, toClientRemote } from "../mappers/clientMapper";
-
-function clientsPath(uid: string): string {
-  return `users/${uid}/clients`;
-}
 
 export class FirestoreClientRepository implements IClientRepository {
-  async getAllClients(uid: string): Promise<ClientModel[]> {
-    const docs = await getCollection<RemoteResultClientModel>(clientsPath(uid));
-    return docs.map(toClientDomain).sort((a, b) =>
-      a.clientName.localeCompare(b.clientName, "es", { sensitivity: "base" })
-    );
+  private path(uid: string) {
+    return `users/${uid}/clients`;
   }
 
-  async getClientById(uid: string, clientId: string): Promise<ClientModel | null> {
-    const directDoc = await getDocument<RemoteResultClientModel>(clientsPath(uid), clientId);
-    if (directDoc) {
-      return toClientDomain(directDoc);
+  private configPath(uid: string) {
+    return `users/${uid}/config`;
+  }
+
+  private numericId(id: string): number {
+    return parseInt(String(id).replace(/\D/g, ""), 10) || 0;
+  }
+
+  async getClients(uid: string): Promise<ClientModel[]> {
+    const remote = await getCollection<RemoteResultClientModel>(this.path(uid));
+    return remote.map(toClientDomain);
+  }
+
+  async searchClientsByPrefix(uid: string, prefix: string): Promise<ClientModel[]> {
+    const remote = await getCollection<RemoteResultClientModel>(this.path(uid), [
+      where("Razón Social", ">=", prefix),
+      where("Razón Social", "<", prefix + "\uf8ff"),
+    ]);
+    return remote.map(toClientDomain);
+  }
+
+  async getClient(uid: string, clientId: string): Promise<ClientModel | null> {
+    const remote = await getDocument<RemoteResultClientModel>(this.path(uid), clientId);
+    return remote ? toClientDomain(remote) : null;
+  }
+
+  async createClient(uid: string, client: ClientModel): Promise<void> {
+    await setDocument(this.path(uid), client.clientId, toClientRemote(client));
+    // Mantener el contador por encima del ID más alto creado.
+    const n = this.numericId(client.clientId);
+    if (n > 0) {
+      const counters = await getDocument<{ lastClientNumber?: number }>(this.configPath(uid), "counters");
+      if (n > (counters?.lastClientNumber ?? 0)) {
+        await setDocument(this.configPath(uid), "counters", { lastClientNumber: n });
+      }
     }
-    const queryDocs = await getCollection<RemoteResultClientModel>(clientsPath(uid), {
-      filters: [{ field: "Cliente Id", op: "=", value: clientId }],
-      limit: 1,
-    });
-    if (queryDocs.length > 0) {
-      return toClientDomain(queryDocs[0]);
+  }
+
+  async updateClient(uid: string, clientId: string, data: Partial<ClientModel>): Promise<void> {
+    await updateDocument(this.path(uid), clientId, data);
+  }
+
+  async deleteClient(uid: string, clientId: string): Promise<void> {
+    const clientOrdersPath = `users/${uid}/clients/${clientId}/buyOrders`;
+    const clientOrders = await getCollection(clientOrdersPath);
+    for (const order of clientOrders) {
+      await deleteDocument(clientOrdersPath, order.id);
     }
-    return null;
+
+    const billingPath = `users/${uid}/allBillings`;
+    const billings = await getCollection<{ id: string }>(billingPath, [where("Cliente Id", "==", clientId)]);
+    for (const billing of billings) {
+      await deleteDocument(billingPath, billing.id);
+    }
+
+    const paymentPath = `users/${uid}/paymentRegister`;
+    const payments = await getCollection<{ id: string }>(paymentPath, [where("Cliente ID", "==", clientId)]);
+    for (const payment of payments) {
+      await deleteDocument(paymentPath, payment.id);
+    }
+
+    await deleteDocument(this.path(uid), clientId);
+
+    const hasRemainingOrders = await this.hasAnyOrderForUser(uid);
+    if (!hasRemainingOrders) {
+      await setDocument(this.configPath(uid), "counters", { lastOrderNumber: 0 });
+    }
+
+    // Regla de borrado: si se elimina el ID más alto, el contador retrocede para reutilizar el espacio.
+    const n = this.numericId(clientId);
+    if (n > 0) {
+      const counters = await getDocument<{ lastClientNumber?: number }>(this.configPath(uid), "counters");
+      if (counters && n === (counters.lastClientNumber ?? 0)) {
+        await setDocument(this.configPath(uid), "counters", { lastClientNumber: n - 1 });
+      }
+    }
   }
 
-  async createClient(uid: string, client: ClientModel): Promise<ClientModel> {
-    const remoteData = toClientRemote(client);
-    await setDocument(clientsPath(uid), client.clientId, remoteData as unknown as Record<string, unknown>);
-    return client;
+  private async hasAnyOrderForUser(uid: string): Promise<boolean> {
+    try {
+      const all = await getCollectionGroup<{ __path?: string }>("buyOrders");
+      return all.some((order) => order.__path?.startsWith(`users/${uid}/`));
+    } catch {
+      return true;
+    }
   }
 
-  async updateClient(uid: string, client: ClientModel): Promise<ClientModel> {
-    const remoteData = toClientRemote(client);
-    await updateDocument(clientsPath(uid), client.clientId, remoteData as unknown as Record<string, unknown>);
-    return client;
-  }
-
-  async deleteClient(uid: string, clientId: string): Promise<string> {
-    await deleteDocument(clientsPath(uid), clientId);
-    return clientId;
+  async suggestNextClientId(uid: string): Promise<string> {
+    const counters = await getDocument<{ lastClientNumber?: number }>(this.configPath(uid), "counters");
+    let last = counters?.lastClientNumber ?? 0;
+    if (last === 0) {
+      // Escaneo de emergencia: mayor ID numérico en nombres de documento y campo "Cliente Id".
+      const all = await getCollection<RemoteResultClientModel & { id: string }>(this.path(uid));
+      for (const c of all) {
+        last = Math.max(last, this.numericId(c.id), this.numericId(c["Cliente Id"] ?? ""));
+      }
+    }
+    return String(last + 1);
   }
 }

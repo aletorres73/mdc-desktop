@@ -1,8 +1,6 @@
-// Firebase SDK Configuration
-// Using environment variables for security
-
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
+import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -14,29 +12,9 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-const requiredConfig = [
-  "apiKey",
-  "authDomain",
-  "projectId",
-  "storageBucket",
-  "messagingSenderId",
-  "appId",
-] as const;
+export const firebaseApp: FirebaseApp = getApps().length
+  ? getApps()[0]
+  : initializeApp(firebaseConfig);
 
-const missingConfig = requiredConfig.filter((key) => !firebaseConfig[key]);
-if (missingConfig.length > 0) {
-  throw new Error(
-    `Faltan variables de Firebase: ${missingConfig
-      .map((key) => `VITE_FIREBASE_${key.replace(/[A-Z]/g, (letter) => `_${letter}`).toUpperCase()}`)
-      .join(", ")}`
-  );
-}
-
-// Initialize Firebase
-export const app = initializeApp(firebaseConfig);
-
-// Initialize Firestore
-export const db = getFirestore(app);
-
-// Export config for reference if needed
-export { firebaseConfig };
+export const auth: Auth = getAuth(firebaseApp);
+export const db: Firestore = getFirestore(firebaseApp);

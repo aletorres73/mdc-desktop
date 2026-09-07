@@ -1,112 +1,108 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { ROUTES } from "../routes/routes";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { authUseCase } from "@/di/container";
 import { Button } from "@/presentation/components/ui/button";
 import { Input } from "@/presentation/components/ui/input";
 import { Label } from "@/presentation/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/presentation/components/ui/card";
-import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
+import { ErrorState } from "@/presentation/components/shared/ErrorState";
+import { ROUTES } from "@/presentation/routes/routes";
+import { Loader2 } from "lucide-react";
 
 export default function SignUp() {
-  const [displayName, setDisplayName] = useState("");
+  const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register } = useAuth();
-  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
-
-    try {
-      await register(email, password, displayName);
-      navigate(ROUTES.HOME, { replace: true });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Error desconocido";
-      if (message.includes("EMAIL_EXISTS")) {
-        setError("El email ya está registrado");
-      } else if (message.includes("WEAK_PASSWORD")) {
-        setError("La contraseña es muy débil");
-      } else {
-        setError(message);
-      }
-    } finally {
-      setIsSubmitting(false);
+    if (!name.trim() || !lastName.trim()) {
+      setError("Nombre y apellido son obligatorios.");
+      return;
     }
-  }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Ingresá un email válido.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await authUseCase.signUp(email, password, name, lastName);
+      navigate(ROUTES.HOME);
+    } catch {
+      setError("No se pudo crear la cuenta. Verificá los datos.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
-      <Card className="w-full max-w-md border-border/50 shadow-sm bg-card">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">Crear cuenta</CardTitle>
-          <CardDescription>
-            Registrate para empezar a usar MDC App
-          </CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+      <Card className="w-full max-w-sm border-border/50 shadow-sm">
+        <CardHeader>
+          <CardTitle>Crear cuenta</CardTitle>
+          <CardDescription>Comenzá tu prueba gratuita de 7 días.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="displayName">Nombre y Apellido</Label>
-              <Input
-                id="displayName"
-                type="text"
-                placeholder="Tu nombre completo"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                required
-                autoComplete="name"
-                disabled={isSubmitting}
-              />
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {error && <ErrorState message={error} />}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="name">Nombre</Label>
+                <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="lastName">Apellido</Label>
+                <Input id="lastName" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              </div>
             </div>
-
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                disabled={isSubmitting}
-              />
+              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
-
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                autoComplete="new-password"
-                disabled={isSubmitting}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Creando cuenta..." : "Crear cuenta"}
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                required
+                minLength={6}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+            <Button type="submit" disabled={submitting} className="mt-2">
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              Crear cuenta
             </Button>
-
             <div className="text-center text-sm text-muted-foreground">
               ¿Ya tenés cuenta?{" "}
-              <Link to={ROUTES.LOGIN} className="text-primary underline hover:text-primary/80 font-medium">
-                Iniciá sesión
+              <Link to={ROUTES.LOGIN} className="hover:text-foreground hover:underline">
+                Iniciar sesión
               </Link>
             </div>
           </form>

@@ -1,140 +1,153 @@
-import type { IInvoiceRepository } from "../repositories/IInvoiceRepository";
-import type { PaymentRegisterUseCase } from "./PaymentRegisterUseCase";
-import type { BillingModel, InvoiceFilters, InvoicePageDomain } from "../entities/invoice";
-import type { PaymentCondition } from "../entities/factory";
-import { InvoiceFilterService } from "../logic/invoiceFilterService";
-import {
-  addInvoiceComment,
-  applyInvoicePayment,
-  recalculateBilling,
-  updateInvoiceDetails,
-  updateInvoicePayment,
-  deleteInvoicePayment,
-  reconcileInvoicePayment,
-  type InvoicePaymentInput,
-} from "../logic/recalculate";
+import type { IInvoiceRepository, InvoiceFilters } from "@/domain/repositories/IInvoiceRepository";
+import type { IFactoryRepository } from "@/domain/repositories/IFactoryRepository";
+import type { IPaymentRegisterRepository } from "@/domain/repositories/IPaymentRegisterRepository";
+import type { BillingModel, BillingComments, InvoicePage } from "@/domain/entities/billing";
+import type { MovementMethod } from "@/domain/entities/paymentRegister";
+import { recalculateBilling } from "@/domain/logic/recalculate";
+import { VIRTUAL_MOVEMENT_METHODS } from "@/domain/entities/paymentRegister";
 
 export class InvoiceUseCase {
   constructor(
     private invoiceRepo: IInvoiceRepository,
-    private paymentRegisterUseCase?: PaymentRegisterUseCase
+    private factoryRepo: IFactoryRepository,
+    private paymentRepo: IPaymentRegisterRepository,
   ) {}
 
-  async getPaginatedInvoices(
-    uid: string,
-    filters: InvoiceFilters,
-    startAfter?: unknown,
-    pageSize: number = 20
-  ): Promise<InvoicePageDomain> {
-    const rawFilters = InvoiceFilterService.buildFilters(filters);
-    const orderConfig = InvoiceFilterService.determineOrderBy(filters);
-
-    return this.invoiceRepo.fetchPage(uid, {
-      filters: rawFilters,
-      orderByField: orderConfig.field,
-      direction: orderConfig.direction,
-      pageSize,
-      startAfter,
-    });
+  getInvoicesPage(uid: string, filters: InvoiceFilters, pageSize: number, cursor?: string | null): Promise<InvoicePage> {
+    return this.invoiceRepo.getInvoicesPage(uid, filters, pageSize, cursor);
   }
 
-  async getInvoiceByNumber(uid: string, invoiceNumber: string): Promise<BillingModel | null> {
-    return this.invoiceRepo.getInvoiceByNumber(uid, invoiceNumber);
+  getInvoice(uid: string, id: string): Promise<BillingModel | null> {
+    return this.invoiceRepo.getInvoice(uid, id);
   }
 
-  async getAllBillings(uid: string): Promise<BillingModel[]> {
-    return this.invoiceRepo.getAllBillings(uid);
+  getInvoiceByBillingNumber(uid: string, billingNumber: string): Promise<BillingModel | null> {
+    return this.invoiceRepo.getInvoiceByBillingNumber(uid, billingNumber);
   }
 
-  async recalculateAndSaveInvoice(
-    uid: string,
-    billing: BillingModel,
-    condition?: PaymentCondition | null
-  ): Promise<BillingModel> {
-    const updated = recalculateBilling(billing, condition);
-    await this.invoiceRepo.updateInvoice(uid, updated.billingNumber, updated);
-    return updated;
+  async createInvoice(uid: string, billing: BillingModel): Promise<string> {
+    const normalizedNumber = billing.billingNumber.trim();
+    if (!normalizedNumber) throw new Error("Ingresá un número de factura");
+    if (!billing.clientId || !billing.clientName.trim()) throw new Error("Seleccioná un cliente");
+    if (!billing.brand.trim()) throw new Error("Seleccioná una fábrica");
+
+    const factory = (await this.factoryRepo.getFactoryByName(uid, billing.brand)) ?? undefined;
+    if (!factory) throw new Error("La fábrica seleccionada no existe");
+    if (factory.branchList.length > 0 && !billing.branch.trim()) {
+      throw new Error("Seleccioná un segmento para la fábrica");
+    }
+
+    const existing = await this.invoiceRepo.getInvoiceByBillingNumber(uid, normalizedNumber);
+    if (existing && (!billing.id || existing.id !== billing.id)) {
+      throw new Error("El número de factura ya existe en la base de datos. No se puede pisar un documento existente.");
+    }
+
+    const recalculated = recalculateBilling(billing, factory);
+    return this.invoiceRepo.createInvoice(uid, recalculated);
   }
 
-  async updateInvoiceDetails(
-    uid: string,
-    billing: BillingModel,
-    updates: Partial<BillingModel>
-  ): Promise<BillingModel> {
-    const updated = updateInvoiceDetails(billing, updates);
-    await this.invoiceRepo.updateInvoice(uid, updated.billingNumber, updated);
-    return updated;
+  async updateInvoice(uid: string, id: string, data: Partial<BillingModel>): Promise<void> {
+    const current = await this.invoiceRepo.getInvoice(uid, id);
+    if (!current) throw new Error("Factura no encontrada");
+
+    const next = { ...current, ...data, id };
+    const normalizedNumber = next.billingNumber.trim();
+    if (!normalizedNumber) throw new Error("Ingresá un número de factura");
+    if (!next.clientId || !next.clientName.trim()) throw new Error("Seleccioná un cliente");
+    if (!next.brand.trim()) throw new Error("Seleccioná una fábrica");
+
+    const factory = (await this.factoryRepo.getFactoryByName(uid, next.brand)) ?? undefined;
+    if (!factory) throw new Error("La fábrica seleccionada no existe");
+    if (factory.branchList.length > 0 && !next.branch.trim()) {
+      throw new Error("Seleccioná un segmento para la fábrica");
+    }
+
+    const duplicate = await this.invoiceRepo.getInvoiceByBillingNumber(uid, normalizedNumber);
+    if (duplicate && duplicate.id !== id) {
+      throw new Error("El número de factura ya existe en la base de datos. Elegí otro número.");
+    }
+
+    await this.invoiceRepo.updateInvoice(uid, id, recalculateBilling(next, factory));
   }
 
-  async addInvoiceComment(
-    uid: string,
-    billing: BillingModel,
-    comment: string
-  ): Promise<BillingModel> {
-    const updated = addInvoiceComment(billing, comment);
-    await this.invoiceRepo.updateInvoice(uid, updated.billingNumber, updated);
-    return updated;
+  async deleteInvoice(uid: string, id: string): Promise<void> {
+    await this.invoiceRepo.deleteInvoice(uid, id);
   }
 
+  async addComment(uid: string, id: string, comment: string): Promise<void> {
+    const invoice = await this.invoiceRepo.getInvoice(uid, id);
+    if (!invoice) throw new Error("Invoice not found");
+    const comments: BillingComments[] = [...invoice.comments, { comments: comment, date: Date.now() }];
+    await this.invoiceRepo.updateInvoice(uid, id, { comments });
+  }
+
+  async changePaymentCondition(uid: string, id: string, paymentCondition: string): Promise<void> {
+    const invoice = await this.invoiceRepo.getInvoice(uid, id);
+    if (!invoice) throw new Error("Invoice not found");
+    const factory = (await this.factoryRepo.getFactoryByName(uid, invoice.brand)) ?? undefined;
+    const recalculated = recalculateBilling({ ...invoice, paymentCondition }, factory);
+    await this.invoiceRepo.updateInvoice(uid, id, recalculated);
+  }
+
+  /**
+   * Registra pago (real o virtual) y sincroniza el total 'payed' de la factura
+   * sumando todos los movimientos vigentes en paymentRegister.
+   */
   async applyInvoicePayment(
     uid: string,
-    billing: BillingModel,
-    payment: InvoicePaymentInput
-  ): Promise<BillingModel> {
-    const updated = applyInvoicePayment(billing, payment);
-    await this.invoiceRepo.updateInvoice(uid, updated.billingNumber, updated);
-    const registeredPayment = updated.payments?.[updated.payments.length - 1];
-    if (registeredPayment && this.paymentRegisterUseCase) {
-      await this.paymentRegisterUseCase.registerPayment(uid, updated, registeredPayment);
-    }
-    return updated;
-  }
+    invoiceId: string,
+    payment: { amount: number; method: MovementMethod; notes: string },
+  ): Promise<void> {
+    const invoice = await this.invoiceRepo.getInvoice(uid, invoiceId);
+    if (!invoice) throw new Error("Invoice not found");
 
-  async updateInvoicePayment(
-    uid: string,
-    billing: BillingModel,
-    paymentIndex: number,
-    changes: Partial<InvoicePaymentInput & { amount: number; status: string; note?: string }>
-  ): Promise<BillingModel> {
-    const updated = updateInvoicePayment(billing, paymentIndex, changes);
-    await this.invoiceRepo.updateInvoice(uid, updated.billingNumber, updated);
-    return updated;
-  }
-
-  async deleteInvoicePayment(
-    uid: string,
-    billing: BillingModel,
-    paymentIndex: number
-  ): Promise<BillingModel> {
-    const updated = deleteInvoicePayment(billing, paymentIndex);
-    await this.invoiceRepo.updateInvoice(uid, updated.billingNumber, updated);
-    return updated;
-  }
-
-  async reconcileInvoicePayment(
-    uid: string,
-    billing: BillingModel,
-    paymentIndex: number
-  ): Promise<BillingModel> {
-    const updated = reconcileInvoicePayment(billing, paymentIndex);
-    await this.invoiceRepo.updateInvoice(uid, updated.billingNumber, updated);
-    return updated;
-  }
-
-  async changePaymentCondition(
-    uid: string,
-    billing: BillingModel,
-    condition: PaymentCondition | null
-  ): Promise<BillingModel> {
-    const updated = updateInvoiceDetails(billing, {
-      paymentCondition: condition?.paymentName ?? "",
+    const isVirtual = VIRTUAL_MOVEMENT_METHODS.includes(payment.method);
+    const nextId = await this.paymentRepo.getNextId(uid);
+    await this.paymentRepo.createMovement(uid, {
+      id: nextId,
+      clientId: invoice.clientId,
+      branch: invoice.brand,
+      date: Date.now(),
+      clientName: invoice.clientName,
+      documentNumber: invoice.billingNumber,
+      type: invoice.type,
+      total: payment.amount,
+      notes: payment.notes,
+      method: payment.method,
+      status: "PENDIENTE",
+      reconciliationDate: 0,
+      confirmationTimestamp: Date.now(),
+      isVirtual,
     });
-    const recalculated = recalculateBilling(updated, condition);
-    await this.invoiceRepo.updateInvoice(uid, recalculated.billingNumber, recalculated);
-    return recalculated;
+
+    const movements = await this.paymentRepo.getMovements(uid, { clientId: invoice.clientId });
+    const relevant = movements.filter((m) => m.documentNumber === invoice.billingNumber);
+    const payed = relevant.filter((m) => !m.isVirtual).reduce((sum, m) => sum + m.total, 0);
+    const virtualReduction = relevant.filter((m) => m.isVirtual).reduce((sum, m) => sum + m.total, 0);
+
+    const factory = (await this.factoryRepo.getFactoryByName(uid, invoice.brand)) ?? undefined;
+    const recalculated = recalculateBilling(
+      { ...invoice, payed, toPay: invoice.total - virtualReduction },
+      factory,
+    );
+    await this.invoiceRepo.updateInvoice(uid, invoiceId, recalculated);
   }
 
-  async deleteInvoice(uid: string, billingNumber: string): Promise<void> {
-    await this.invoiceRepo.deleteInvoice(uid, billingNumber);
+  async deleteInvoicePayment(uid: string, invoiceId: string, movementId: number): Promise<void> {
+    await this.paymentRepo.deleteMovement(uid, movementId);
+    const invoice = await this.invoiceRepo.getInvoice(uid, invoiceId);
+    if (!invoice) return;
+    const movements = await this.paymentRepo.getMovements(uid, { clientId: invoice.clientId });
+    const relevant = movements.filter((m) => m.documentNumber === invoice.billingNumber);
+    const payed = relevant.filter((m) => !m.isVirtual).reduce((sum, m) => sum + m.total, 0);
+    const factory = (await this.factoryRepo.getFactoryByName(uid, invoice.brand)) ?? undefined;
+    await this.invoiceRepo.updateInvoice(uid, invoiceId, recalculateBilling({ ...invoice, payed }, factory));
+  }
+
+  async reconcileInvoicePayment(uid: string, movementId: number): Promise<void> {
+    await this.paymentRepo.updateMovement(uid, movementId, {
+      status: "IMPUTADO",
+      reconciliationDate: Date.now(),
+    });
   }
 }

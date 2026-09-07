@@ -1,69 +1,36 @@
+import { getCollection, getDocument, setDocument, updateDocument, deleteDocument, where } from "@/data/datasources/firestore";
+import { toFactoryDomain, toFactoryRemote, toFactoryRemotePartial } from "@/data/mappers/factoryMapper";
+import type { RemoteResultFactoryModel } from "@/data/remote/remoteFactory";
 import type { IFactoryRepository } from "@/domain/repositories/IFactoryRepository";
-import type { FactoryModel, PaymentCondition } from "@/domain/entities/factory";
-import { getCollection, getDocument, setDocument, updateDocument, deleteDocument } from "../datasources";
-import type { RemoteResultFactoryModel } from "../remote/remoteResultFactory";
-import { toFactoryDomain, toFactoryRemote } from "../mappers/factoryMapper";
-
-function factoriesPath(uid: string): string {
-  return `users/${uid}/factories`;
-}
+import type { FactoryModel } from "@/domain/entities/factory";
 
 export class FirestoreFactoryRepository implements IFactoryRepository {
-  async getAllFactories(uid: string): Promise<FactoryModel[]> {
-    const docs = await getCollection<RemoteResultFactoryModel>(factoriesPath(uid));
-    return docs
-      .map(toFactoryDomain)
-      .sort((a, b) => b.branchList.length - a.branchList.length);
+  private path(uid: string) {
+    return `users/${uid}/factories`;
   }
 
-  async getFactoryByName(uid: string, factoryName: string): Promise<FactoryModel | null> {
-    const directDoc = await getDocument<RemoteResultFactoryModel>(factoriesPath(uid), factoryName);
-    if (directDoc) {
-      return toFactoryDomain(directDoc);
-    }
-    const queryDocs = await getCollection<RemoteResultFactoryModel>(factoriesPath(uid), {
-      filters: [{ field: "Fabrica", op: "=", value: factoryName }],
-      limit: 1,
-    });
-    if (queryDocs.length > 0) {
-      return toFactoryDomain(queryDocs[0]);
-    }
-    return null;
+  async getFactories(uid: string): Promise<FactoryModel[]> {
+    const remote = await getCollection<RemoteResultFactoryModel>(this.path(uid));
+    return remote.map(toFactoryDomain);
   }
 
-  async createFactory(uid: string, factory: FactoryModel): Promise<FactoryModel> {
-    const remoteData = toFactoryRemote(factory);
-    await setDocument(factoriesPath(uid), factory.name, remoteData as unknown as Record<string, unknown>);
-    return factory;
+  async getFactoryByName(uid: string, name: string): Promise<FactoryModel | null> {
+    const remote = await getDocument<RemoteResultFactoryModel>(this.path(uid), name);
+    if (remote) return toFactoryDomain(remote);
+
+    const matches = await getCollection<RemoteResultFactoryModel>(this.path(uid), [where("Fabrica", "==", name)]);
+    return matches[0] ? toFactoryDomain(matches[0]) : null;
   }
 
-  async updateFactory(uid: string, factory: FactoryModel): Promise<FactoryModel> {
-    const remoteData = toFactoryRemote(factory);
-    await updateDocument(factoriesPath(uid), factory.name, remoteData as unknown as Record<string, unknown>);
-    return factory;
+  async createFactory(uid: string, factory: FactoryModel): Promise<void> {
+    await setDocument(this.path(uid), factory.name, toFactoryRemote(factory));
   }
 
-  async updatePaymentConditions(
-    uid: string,
-    factoryName: string,
-    paymentConditions: PaymentCondition[]
-  ): Promise<void> {
-    const condiciones: Record<string, Record<string, string>> = {};
-    paymentConditions.forEach((pc, index) => {
-      condiciones[`condicion${index + 1}`] = {
-        condicion: pc.paymentName,
-        dto: pc.discount.toString(),
-        meses: pc.month.toString(),
-        vencimiento: pc.expiration.toString(),
-        plazo: pc.date.toString(),
-        pagos: pc.quantity.toString(),
-      };
-    });
-    await updateDocument(factoriesPath(uid), factoryName, { Condiciones: condiciones });
+  async updateFactory(uid: string, name: string, data: Partial<FactoryModel>): Promise<void> {
+    await updateDocument(this.path(uid), name, toFactoryRemotePartial(data));
   }
 
-  async deleteFactory(uid: string, factoryName: string): Promise<string> {
-    await deleteDocument(factoriesPath(uid), factoryName);
-    return factoryName;
+  async deleteFactory(uid: string, name: string): Promise<void> {
+    await deleteDocument(this.path(uid), name);
   }
 }

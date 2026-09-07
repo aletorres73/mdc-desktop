@@ -1,85 +1,64 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { ROUTES } from "../routes/routes";
+import { authUseCase } from "@/di/container";
 import { Button } from "@/presentation/components/ui/button";
 import { Input } from "@/presentation/components/ui/input";
 import { Label } from "@/presentation/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/presentation/components/ui/card";
-import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
+import { ErrorState } from "@/presentation/components/shared/ErrorState";
+import { ROUTES } from "@/presentation/routes/routes";
+import { CheckCircle2, Loader2 } from "lucide-react";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { resetPassword } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
-
+    setSubmitting(true);
     try {
-      await resetPassword(email);
+      await authUseCase.resetPassword(email);
       setSent(true);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Error desconocido";
-      setError(message.includes("USER_NOT_FOUND") ? "No encontramos una cuenta con ese email" : message);
+    } catch {
+      setError("No se pudo enviar el email de recuperación.");
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
-      <Card className="w-full max-w-md border-border/50 shadow-sm bg-card">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">Recuperar contraseña</CardTitle>
-          <CardDescription>
-            Te enviaremos un enlace para crear una contraseña nueva.
-          </CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+      <Card className="w-full max-w-sm border-border/50 shadow-sm">
+        <CardHeader>
+          <CardTitle>Recuperar contraseña</CardTitle>
+          <CardDescription>Te enviaremos un link para restablecerla.</CardDescription>
         </CardHeader>
         <CardContent>
           {sent ? (
-            <div className="space-y-4 text-center">
-              <Alert>
-                <AlertDescription>
-                  Si existe una cuenta con ese email, recibirás las instrucciones para recuperar el acceso.
-                </AlertDescription>
-              </Alert>
-              <Link to={ROUTES.LOGIN} className="text-sm text-primary underline hover:text-primary/80 font-medium">
-                Volver al inicio de sesión
+            <div className="flex flex-col items-center gap-2 py-4 text-center">
+              <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+              <p className="text-sm">Revisá tu email para continuar.</p>
+              <Link to={ROUTES.LOGIN} className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                Volver a iniciar sesión
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <div className="space-y-2">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {error && <ErrorState message={error} />}
+              <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="tu@email.com"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  autoComplete="email"
-                  disabled={isSubmitting}
-                />
+                <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Enviando..." : "Enviar enlace"}
+              <Button type="submit" disabled={submitting}>
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                Enviar link
               </Button>
-              <div className="text-center text-sm">
-                <Link to={ROUTES.LOGIN} className="text-primary underline hover:text-primary/80 font-medium">
-                  Volver al inicio de sesión
-                </Link>
-              </div>
+              <Link to={ROUTES.LOGIN} className="text-center text-sm text-muted-foreground hover:text-foreground hover:underline">
+                Volver a iniciar sesión
+              </Link>
             </form>
           )}
         </CardContent>

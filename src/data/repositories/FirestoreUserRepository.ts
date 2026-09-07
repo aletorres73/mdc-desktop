@@ -1,13 +1,20 @@
+import { getDocument, setDocument, updateDocument } from "@/data/datasources/firestore";
+import { toUserDomain, toUserRemote } from "@/data/mappers/userMapper";
+import type { RemoteResultUserModel } from "@/data/remote/remoteUser";
 import type { IUserRepository } from "@/domain/repositories/IUserRepository";
 import type { UserModel } from "@/domain/entities/user";
-import { getDocument, updateDocument } from "../datasources";
 
 export class FirestoreUserRepository implements IUserRepository {
-  async getUserProfile(uid: string): Promise<UserModel | null> {
-    return getDocument<UserModel>("users", uid);
+  async getUser(uid: string): Promise<UserModel | null> {
+    const remote = await getDocument<RemoteResultUserModel>("users", uid);
+    return remote ? toUserDomain(remote) : null;
   }
 
-  async updateUserProfile(uid: string, data: Partial<UserModel>): Promise<void> {
-    await updateDocument("users", uid, data as Record<string, unknown>);
+  async createUser(user: UserModel): Promise<void> {
+    await setDocument("users", user.uid, toUserRemote(user));
+  }
+
+  async updateUser(uid: string, data: Partial<UserModel>): Promise<void> {
+    await updateDocument("users", uid, data);
   }
 }

@@ -1,102 +1,69 @@
-import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { ROUTES } from "../routes/routes";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { authUseCase } from "@/di/container";
 import { Button } from "@/presentation/components/ui/button";
 import { Input } from "@/presentation/components/ui/input";
 import { Label } from "@/presentation/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/presentation/components/ui/card";
-import { Alert, AlertDescription } from "@/presentation/components/ui/alert";
+import { ErrorState } from "@/presentation/components/shared/ErrorState";
+import { ROUTES } from "@/presentation/routes/routes";
+import { Loader2 } from "lucide-react";
 
 export default function Login() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsSubmitting(true);
-
+    setSubmitting(true);
     try {
-      await login(email, password);
-      navigate(ROUTES.HOME, { replace: true });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Error desconocido";
-      if (message.includes("INVALID_LOGIN_CREDENTIALS") || message.includes("EMAIL_NOT_FOUND") || message.includes("INVALID_PASSWORD")) {
-        setError("Credenciales inválidas");
-      } else if (message.includes("USER_DISABLED")) {
-        setError("Usuario deshabilitado");
-      } else {
-        setError(message);
-      }
+      await authUseCase.signIn(email, password);
+      navigate(ROUTES.HOME);
+    } catch {
+      setError("Email o contraseña incorrectos.");
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
-      <Card className="w-full max-w-md border-border/50 shadow-sm bg-card">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">MDC App</CardTitle>
-          <CardDescription>
-            Iniciá sesión para continuar al sistema comercial
-          </CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+      <Card className="w-full max-w-sm border-border/50 shadow-sm">
+        <CardHeader>
+          <CardTitle>Iniciar sesión</CardTitle>
+          <CardDescription>Accedé a tu cuenta de MDC Gestión Mayorista.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <div className="space-y-2">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {error && <ErrorState message={error} />}
+            <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                disabled={isSubmitting}
-              />
+              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
-
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                disabled={isSubmitting}
               />
             </div>
-
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
+            <Button type="submit" disabled={submitting} className="mt-2">
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              Ingresar
             </Button>
-
-            <div className="text-center text-sm">
-              <Link to={ROUTES.FORGOT_PASSWORD} className="text-primary underline hover:text-primary/80 font-medium">
-                ¿Olvidaste tu contraseña?
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <Link to={ROUTES.FORGOT_PASSWORD} className="hover:text-foreground hover:underline">
+                Olvidé mi contraseña
               </Link>
-            </div>
-
-            <div className="text-center text-sm text-muted-foreground">
-              ¿No tenés cuenta?{" "}
-              <Link to={ROUTES.SIGN_UP} className="text-primary underline hover:text-primary/80 font-medium">
-                Registrate
+              <Link to={ROUTES.SIGN_UP} className="hover:text-foreground hover:underline">
+                Crear cuenta
               </Link>
             </div>
           </form>

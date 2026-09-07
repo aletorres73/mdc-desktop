@@ -1,6 +1,11 @@
 export type MovementMethod =
-  | "PAGO" | "EFECTIVO" | "TRANSFERENCIA" | "CHEQUE"
-  | "PRONTO_PAGO" | "NOTA_CREDITO" | "DESCUENTO_EXTRA";
+  | "PAGO"
+  | "EFECTIVO"
+  | "TRANSFERENCIA"
+  | "CHEQUE"
+  | "PRONTO_PAGO"
+  | "NOTA_CREDITO"
+  | "DESCUENTO_EXTRA";
 
 export type MovementStatus = "PENDIENTE" | "IMPUTADO";
 
@@ -20,3 +25,9 @@ export interface PaymentRegisterModel {
   confirmationTimestamp: number;
   isVirtual: boolean;
 }
+
+export const VIRTUAL_MOVEMENT_METHODS: MovementMethod[] = [
+  "PRONTO_PAGO",
+  "NOTA_CREDITO",
+  "DESCUENTO_EXTRA",
+];

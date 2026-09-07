@@ -1,160 +1,138 @@
-"use client";
-
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { useBuyOrder } from "../hooks/useOrders";
-import { PageShell, PageHeader, KpiCard, DataTableShell, DataTableRow, DataTableCell, StatusBadge } from "../components/shared";
+import { useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/presentation/contexts/AuthContext";
+import { useBuyOrder } from "@/presentation/hooks/useBuyOrders";
+import { useCreateInvoiceFromOrder } from "@/presentation/hooks/useBuyOrders";
+import { buyOrderUseCase, invoiceUseCase } from "@/di/container";
 import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
 import { Button } from "@/presentation/components/ui/button";
-import { Skeleton } from "@/presentation/components/ui/skeleton";
-import { ArrowLeft, Package, AlertCircle, Share2, Layers } from "lucide-react";
-import type { ArticleOrderModel } from "@/domain/entities/order";
-import { toFormattedDate } from "@/domain/entities/formatters";
-import { shareText } from "../utils/shareUtils";
-import { ReportGenerator } from "@/domain/logic/reportGenerator";
-import { ROUTES } from "../routes/routes";
+import { Input } from "@/presentation/components/ui/input";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/presentation/components/ui/dialog";
+import { LoadingState } from "@/presentation/components/shared/LoadingState";
+import { formatMoney, formatDate } from "@/lib/utils";
+import { clientDetailPath } from "@/presentation/routes/routes";
+import { ArrowLeft, Receipt } from "lucide-react";
 
 export default function OrderDetail() {
   const { clientId, orderId } = useParams<{ clientId: string; orderId: string }>();
-  const { data: order, isLoading, error } = useBuyOrder(clientId ?? null, orderId ?? null);
-  const [copied, setCopied] = useState(false);
+  const { appUser } = useAuth();
+  const { data: order, isLoading } = useBuyOrder(appUser?.uid, clientId, orderId);
+  const createInvoice = useCreateInvoiceFromOrder(appUser?.uid);
 
-  const handleShare = async () => {
-    if (!order) return;
-    const reportText = ReportGenerator.generateOrderReport(order);
-    const success = await shareText(reportText);
-    if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const [billingNumber, setBillingNumber] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const normalizedBillingNumber = billingNumber.trim();
+  const duplicateInvoiceQuery = useQuery({
+    queryKey: ["invoiceByNumber", appUser?.uid, normalizedBillingNumber],
+    queryFn: () => invoiceUseCase.getInvoiceByBillingNumber(appUser!.uid, normalizedBillingNumber),
+    enabled: !!appUser?.uid && normalizedBillingNumber.length > 0,
+    staleTime: 0,
+  });
+
+  const duplicateInvoice = duplicateInvoiceQuery.data;
+  const hasDuplicateInvoice = !!duplicateInvoice;
+
+  const total = useMemo(() => (order ? buyOrderUseCase.calculateTotal(order) : 0), [order]);
+
+  if (isLoading) return <LoadingState className="min-h-[60vh]" />;
+  if (!order) return <p className="text-muted-foreground">Pedido no encontrado.</p>;
+
+  const handleCreateInvoice = async () => {
+    const value = billingNumber.trim();
+    if (!value) return;
+    if (hasDuplicateInvoice) return;
+    await createInvoice.mutateAsync({ clientId: clientId!, orderId: orderId!, billingNumber: value });
+    setOpen(false);
+    setBillingNumber("");
   };
 
-  if (isLoading) {
-    return (
-      <PageShell>
-        <div className="space-y-6">
-          <Skeleton className="h-16 w-1/3 rounded-xl" />
-          <div className="grid gap-4 md:grid-cols-3">
-            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
-          </div>
-          <Skeleton className="h-[300px] w-full rounded-xl" />
-        </div>
-      </PageShell>
-    );
-  }
-
-  if (error || !order) {
-    return (
-      <PageShell>
-        <div className="flex min-h-[50vh] w-full items-center justify-center p-6">
-          <div className="text-center">
-            <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Pedido no encontrado</h2>
-            <p className="text-muted-foreground mb-4">No se pudo cargar el pedido {orderId}</p>
-            <Link to={ROUTES.ORDERS}>
-              <Button variant="outline">Volver al listado</Button>
-            </Link>
-          </div>
-        </div>
-      </PageShell>
-    );
-  }
-
-  const totalPairs = (order.articles || []).reduce((sum, a) => sum + a.pairs, 0);
-
   return (
-    <PageShell maxWidth="default">
-      <PageHeader
-        title={`Pedido #${order.order}`}
-        description={`Cliente: ${order.client} • Fábrica: ${order.factory}`}
-        icon={Package}
-        actions={
-          <div className="flex items-center gap-2">
-            <Link to={ROUTES.ORDERS}>
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Volver
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <Link to={clientDetailPath(clientId!)} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-3.5 w-3.5" /> Cliente
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight">Pedido {order.order}</h1>
+          <p className="text-sm text-muted-foreground">{order.client} · {order.factory} · {order.branch}</p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger render={<Button><Receipt className="h-4 w-4" />Facturar pedido</Button>} />
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Generar factura</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Número de factura</label>
+              <Input value={billingNumber} onChange={(e) => setBillingNumber(e.target.value)} />
+              {hasDuplicateInvoice && (
+                <p className="text-xs font-medium text-destructive">
+                  Este número ya existe en la base de datos y no se puede pisar.
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={handleCreateInvoice} disabled={hasDuplicateInvoice} loading={createInvoice.isPending}>
+                {createInvoice.isPending ? "Generando..." : "Generar"}
               </Button>
-            </Link>
-            <Button variant="outline" size="sm" onClick={handleShare}>
-              <Share2 className="mr-2 h-4 w-4" />
-              {copied ? "¡Copiado!" : "Compartir Nota"}
-            </Button>
-            <StatusBadge status={order.type || "Proceso"} />
-          </div>
-        }
-      />
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Total Artículos" value={order.articles.length} icon={Package} tone="primary" />
-        <KpiCard label="Total Pares" value={totalPairs} icon={Layers} tone="info" />
-        <KpiCard label="Fábrica" value={order.factory} icon={Package} tone="primary" />
-        <KpiCard label="Marca / Segmento" value={order.branch || "General"} icon={Package} tone="info" />
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Cliente</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-base font-semibold">{order.client}</p>
-            <p className="text-xs text-muted-foreground">ID: {order.clientId}</p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Card className="border-border/50 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-sm font-medium text-muted-foreground">Total estimado</p>
+            <p className="text-2xl font-bold tracking-tight tabular-nums">{formatMoney(total)}</p>
           </CardContent>
         </Card>
-
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Condición de Pago</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-base font-semibold">{order.paymentCondition || "Contado"}</p>
-            <p className="text-xs text-muted-foreground">Dto: {order.discount}% • Vencimiento: {order.expirationDays} días</p>
+        <Card className="border-border/50 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-sm font-medium text-muted-foreground">Condición de pago</p>
+            <p className="text-lg font-semibold">{order.paymentCondition || "-"}</p>
           </CardContent>
         </Card>
-
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Fechas Relevantes</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-xs">
-            <p><span className="text-muted-foreground">Carga:</span> {toFormattedDate(order.loadedDate)}</p>
-            <p><span className="text-muted-foreground">Entrega estimada:</span> {toFormattedDate(order.deliveryDate)}</p>
+        <Card className="border-border/50 shadow-sm">
+          <CardContent className="p-4">
+            <p className="text-sm font-medium text-muted-foreground">Entrega</p>
+            <p className="text-lg font-semibold">{formatDate(order.deliveryDate)}</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="border-border/50 shadow-sm bg-card">
+      <Card className="border-border/50 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base font-semibold">Artículos del Pedido ({order.articles.length})</CardTitle>
+          <CardTitle className="text-base">Artículos</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          {order.articles.length === 0 ? (
-            <p className="text-muted-foreground text-center py-6">Sin artículos</p>
-          ) : (
-            <DataTableShell headers={["Artículo", "Color", "Entregados", "Pares"]}>
-              {order.articles.map((article: ArticleOrderModel, i: number) => (
-                <DataTableRow key={i}>
-                  <DataTableCell className="font-medium">{article.name}</DataTableCell>
-                  <DataTableCell>{article.color}</DataTableCell>
-                  <DataTableCell className="text-right font-mono text-muted-foreground">{article.delivered}</DataTableCell>
-                  <DataTableCell className="text-right font-mono font-semibold">{article.pairs}</DataTableCell>
-                </DataTableRow>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Artículo</TableHead>
+                <TableHead>Color</TableHead>
+                <TableHead>Pares</TableHead>
+                <TableHead>Entregados</TableHead>
+                <TableHead>Valor</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {order.articles.map((art, idx) => (
+                <TableRow key={idx}>
+                  <TableCell>{art.name}</TableCell>
+                  <TableCell>{art.color}</TableCell>
+                  <TableCell className="tabular-nums">{art.pairs}</TableCell>
+                  <TableCell className="tabular-nums">{art.delivered}</TableCell>
+                  <TableCell className="tabular-nums">{formatMoney(art.value ?? 0)}</TableCell>
+                </TableRow>
               ))}
-            </DataTableShell>
-          )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
-
-      {order.comments && (
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">Comentarios</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">{order.comments}</p>
-          </CardContent>
-        </Card>
-      )}
-    </PageShell>
+    </div>
   );
 }

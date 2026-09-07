@@ -1,472 +1,245 @@
-"use client";
-
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAllClients } from "../hooks/useClients";
-import { useFactoriesForOrders, useCreateBuyOrder } from "../hooks/useOrders";
-import { useCreateClient } from "../hooks/useClients";
-import { PageShell, PageHeader, DataTableShell, DataTableRow, DataTableCell } from "../components/shared";
+import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "@/presentation/contexts/AuthContext";
+import { useClient } from "@/presentation/hooks/useClients";
+import { useFactories } from "@/presentation/hooks/useFactories";
+import { useCreateBuyOrder } from "@/presentation/hooks/useBuyOrders";
 import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { Button } from "@/presentation/components/ui/button";
 import { Input } from "@/presentation/components/ui/input";
 import { Label } from "@/presentation/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/presentation/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/presentation/components/ui/dialog";
-import { Plus, Loader2, Trash2, Package } from "lucide-react";
-import type { ClientModel } from "@/domain/entities/client";
-import type { BuyOrderModel } from "@/domain/entities/order";
-import { ROUTES } from "../routes/routes";
+import { Select } from "@/presentation/components/ui/select";
+import { Textarea } from "@/presentation/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
+import { clientDetailPath } from "@/presentation/routes/routes";
+import type { ArticleOrderModel } from "@/domain/entities/buyOrder";
+import { Plus, Trash2 } from "lucide-react";
+
+const emptyArticle: ArticleOrderModel = { name: "", color: "", delivered: 0, pairs: 12, value: 0 };
 
 export default function CreateOrder() {
+  const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
-  const { data: clients } = useAllClients();
-  const { data: factories } = useFactoriesForOrders();
-  const createClient = useCreateClient();
-  const createBuyOrder = useCreateBuyOrder();
+  const { appUser } = useAuth();
+  const { data: client } = useClient(appUser?.uid, clientId);
+  const { data: factories } = useFactories(appUser?.uid);
+  const createOrder = useCreateBuyOrder(appUser?.uid, clientId);
 
-  const [step, setStep] = useState<"client" | "details" | "articles">("client");
-  const [selectedClient, setSelectedClient] = useState<ClientModel | null>(null);
-  const [newClientName, setNewClientName] = useState("");
-  const [newClientId, setNewClientId] = useState("");
-  const [isCreatingClient, setIsCreatingClient] = useState(false);
-  const [showCreateClientDialog, setShowCreateClientDialog] = useState(false);
-
-  const [selectedFactory, setSelectedFactory] = useState("");
-  const [selectedBranch, setSelectedBranch] = useState("");
-  const [deliveryDate, setDeliveryDate] = useState("");
-  const [type, setType] = useState("Original");
-  const [billing, setBilling] = useState("Factura");
-  const [comments, setComments] = useState("");
+  const [factory, setFactory] = useState("");
+  const [branch, setBranch] = useState("");
   const [paymentCondition, setPaymentCondition] = useState("");
-  const [discount, setDiscount] = useState("");
-  const [expirationDays, setExpirationDays] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [comments, setComments] = useState("");
+  const [articles, setArticles] = useState<ArticleOrderModel[]>([{ ...emptyArticle }]);
+  const [error, setError] = useState("");
 
-  const [articles, setArticles] = useState<Array<{
-    name: string;
-    color: string;
-    delivered: number;
-    pairs: number;
-  }>>([]);
+  const validArticles = articles.filter((a) => a.name.trim() && a.pairs > 0);
+  const missing: string[] = [];
+  if (!factory) missing.push("fábrica");
+  // if (!branch) missing.push("marca");
+  if (validArticles.length === 0) missing.push("al menos un artículo con pares > 0");
+  const canSubmit = !!client && missing.length === 0 && !createOrder.isPending;
 
-  const [newArticle, setNewArticle] = useState({
-    name: "",
-    color: "",
-    delivered: 0,
-    pairs: 0,
-  });
+  const selectedFactory = factories?.find((f) => f.name === factory);
+  const selectedCondition = selectedFactory?.paymentType.find((p) => p.paymentName === paymentCondition);
+  const factoryOptions = (factories ?? []).map((f) => ({ value: f.name, label: f.name }));
+  const branchOptions = (selectedFactory?.branchList ?? []).map((b) => ({ value: b, label: b }));
+  const conditionOptions = (selectedFactory?.paymentType ?? []).map((p) => ({
+    value: p.paymentName,
+    label: p.paymentName,
+  }));
 
-  const handleNext = () => {
-    if (step === "client" && selectedClient) {
-      setStep("details");
-    } else if (step === "details" && selectedFactory && selectedBranch) {
-      setStep("articles");
-    }
-  };
+  const effectiveDiscount = selectedCondition?.discount ?? 0;
 
-  const handleBack = () => {
-    if (step === "details") setStep("client");
-    else if (step === "articles") setStep("details");
-  };
-
-  const handleAddArticle = () => {
-    if (!newArticle.name || !newArticle.color) return;
-    setArticles([...articles, { ...newArticle }]);
-    setNewArticle({ name: "", color: "", delivered: 0, pairs: 0 });
-  };
-
-  const handleRemoveArticle = (index: number) => {
-    setArticles(articles.filter((_, i) => i !== index));
+  const updateArticle = (idx: number, patch: Partial<ArticleOrderModel>) => {
+    setArticles((prev) => prev.map((a, i) => (i === idx ? { ...a, ...patch } : a)));
   };
 
   const handleSubmit = async () => {
-    if (!selectedClient || !selectedFactory || !selectedBranch) return;
-
-    const deliveryMillis = deliveryDate ? new Date(deliveryDate).getTime() : Date.now();
-    const orderData: BuyOrderModel = {
-      id: `ord_${Date.now()}`,
-      clientId: selectedClient.clientId,
-      order: String(Date.now()).slice(-6),
-      client: selectedClient.clientName,
-      factory: selectedFactory,
-      branch: selectedBranch,
-      deliveryDate: deliveryMillis,
-      type,
-      billing,
-      comments,
-      articles,
-      loadedDate: Date.now(),
-      paymentCondition,
-      discount: parseFloat(discount) || 0,
-      expirationDays: parseInt(expirationDays) || 0,
-      timeStamp: Date.now(),
-    };
-
+    setError("");
+    if (!clientId || !client) {
+      setError("El cliente todavía no se cargó. Esperá un momento e intentá de nuevo.");
+      return;
+    }
+    if (!factory /*|| !branch*/) {
+      setError("Seleccioná una fábrica antes de guardar.");
+      return;
+    }
+    if (validArticles.length === 0) {
+      setError("Agregá al menos un artículo con nombre y pares mayores a 0.");
+      return;
+    }
     try {
-      await createBuyOrder.mutateAsync({ clientId: selectedClient.clientId, order: orderData });
-      navigate(ROUTES.ORDERS);
-    } catch (err) {
-      console.error("Error creating buy order:", err);
+      await createOrder.mutateAsync({
+        clientId,
+        client: client.clientName,
+        factory,
+        branch,
+        deliveryDate: deliveryDate ? new Date(deliveryDate).getTime() : 0,
+        type: "Pedido",
+        billing: "",
+        comments,
+        articles: validArticles,
+        loadedDate: Date.now(),
+        paymentCondition,
+        discount: effectiveDiscount,
+        expirationDays: selectedCondition?.expiration ?? 0,
+        timeStamp: Date.now(),
+      });
+      navigate(clientDetailPath(clientId));
+    } catch {
+      setError("No se pudo guardar el pedido. Revisá tu conexión e intentá de nuevo.");
     }
   };
 
   return (
-    <PageShell maxWidth="narrow">
-      <PageHeader
-        title="Crear Nuevo Pedido"
-        description="Paso a paso para registrar una orden de compra"
-        icon={Package}
-      />
-
-      <div className="flex items-center justify-between py-2">
-        {["Cliente", "Detalles", "Artículos"].map((label, i) => (
-          <div key={label} className="flex items-center">
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
-                i <= (step === "client" ? 0 : step === "details" ? 1 : 2)
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {i + 1}
-            </div>
-            <span className="ml-2 text-sm font-medium">{label}</span>
-            {i < 2 && (
-              <div
-                className={`ml-2 h-0.5 w-16 sm:w-24 ${
-                  i < (step === "client" ? 0 : step === "details" ? 1 : 2)
-                    ? "bg-primary"
-                    : "bg-muted"
-                }`}
-              />
-            )}
-          </div>
-        ))}
+    <div className="flex w-full max-w-[1600px] flex-col gap-6 px-2 py-2 sm:px-3 lg:px-4">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Nuevo pedido</h1>
+          <p className="text-sm text-muted-foreground">Cliente: {client?.clientName}</p>
+        </div>
+        <div className="rounded-lg border border-border/50 bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm">
+          {factory ? `Fábrica: ${factory}` : "Sin fábrica seleccionada"}
+        </div>
       </div>
 
-      {step === "client" && (
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">1. Seleccionar cliente</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2 max-w-md">
-              <Label>Cliente registrado</Label>
-              <Select
-                value={selectedClient?.clientId ?? ""}
-                onValueChange={(v) => {
-                  const client = clients?.find((c) => c.clientId === v);
-                  setSelectedClient(client ?? null);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Buscar cliente por razón social..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients?.map((client) => (
-                    <SelectItem key={client.clientId} value={client.clientId}>
-                      {client.clientName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={() => setShowCreateClientDialog(true)}
-              className="w-full max-w-md"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Crear nuevo cliente
-            </Button>
-
-            <div className="pt-4 border-t flex justify-end">
-              <Button onClick={handleNext} disabled={!selectedClient}>
-                Continuar a Detalles
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === "details" && (
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">2. Detalles del pedido</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2.5fr)_320px]">
+        <div className="space-y-6">
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Datos generales</CardTitle>
+              <p className="text-sm text-muted-foreground">Los campos con * son obligatorios.</p>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="factory">Fábrica *</Label>
-                <Select value={selectedFactory} onValueChange={(v) => setSelectedFactory(v ?? "")}>
-                  <SelectTrigger id="factory">
-                    <SelectValue placeholder="Seleccionar fábrica" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {factories?.map((factory) => (
-                      <SelectItem key={factory} value={factory}>
-                        {factory}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="branch">Marca / Segmento *</Label>
-                <Input
-                  id="branch"
-                  value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
-                  placeholder="Ej: Calzado Deportivo"
+                <Label>*Fábrica</Label>
+                <Select
+                  options={factoryOptions}
+                  placeholder="Seleccionar fábrica"
+                  value={factory}
+                  onChange={(e) => {
+                    setFactory(e.target.value);
+                    setBranch("");
+                    setPaymentCondition("");
+                  }}
                 />
               </div>
-
               <div className="space-y-1.5">
-                <Label htmlFor="deliveryDate">Fecha estimada de entrega</Label>
-                <Input
-                  id="deliveryDate"
-                  type="date"
-                  value={deliveryDate}
-                  onChange={(e) => setDeliveryDate(e.target.value)}
-                />
+                <Label>Marca / Segmento</Label>
+                <Select options={branchOptions} placeholder="Seleccionar marca" value={branch} onChange={(e) => setBranch(e.target.value)} />
               </div>
-
               <div className="space-y-1.5">
-                <Label htmlFor="type">Tipo de pedido</Label>
-                <Input
-                  id="type"
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  placeholder="Original / Reposición"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="billing">Facturación</Label>
-                <Input
-                  id="billing"
-                  value={billing}
-                  onChange={(e) => setBilling(e.target.value)}
-                  placeholder="Factura / Remito"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="paymentCondition">Condición de pago</Label>
-                <Input
-                  id="paymentCondition"
+                <Label>Condición de pago</Label>
+                <Select
+                  options={conditionOptions}
+                  placeholder="Seleccionar condición"
                   value={paymentCondition}
                   onChange={(e) => setPaymentCondition(e.target.value)}
-                  placeholder="Ej: Contado, 30 días"
                 />
               </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="discount">Descuento (%)</Label>
-                <Input
-                  id="discount"
-                  type="number"
-                  step="0.1"
-                  value={discount}
-                  onChange={(e) => setDiscount(e.target.value)}
-                  placeholder="0"
-                />
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Fecha de entrega</Label>
+                <Input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="expirationDays">Días vencimiento</Label>
-                <Input
-                  id="expirationDays"
-                  type="number"
-                  value={expirationDays}
-                  onChange={(e) => setExpirationDays(e.target.value)}
-                  placeholder="30"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="comments">Comentarios adicionales</Label>
-              <Input
-                id="comments"
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                placeholder="Observaciones de entrega, transporte, etc."
-              />
-            </div>
-
-            <div className="flex justify-between pt-4 border-t">
-              <Button variant="outline" onClick={handleBack}>
-                Volver
-              </Button>
-              <Button onClick={handleNext} disabled={!selectedFactory || !selectedBranch}>
-                Continuar a Artículos
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {step === "articles" && (
-        <Card className="border-border/50 shadow-sm bg-card">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">3. Artículos del pedido</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-4 items-end bg-muted/30 p-4 border border-border/40 rounded-lg">
-              <div>
-                <Label htmlFor="articleName" className="text-xs">Artículo</Label>
-                <Input
-                  id="articleName"
-                  value={newArticle.name}
-                  onChange={(e) => setNewArticle({ ...newArticle, name: e.target.value })}
-                  placeholder="Nombre"
-                />
-              </div>
-              <div>
-                <Label htmlFor="articleColor" className="text-xs">Color</Label>
-                <Input
-                  id="articleColor"
-                  value={newArticle.color}
-                  onChange={(e) => setNewArticle({ ...newArticle, color: e.target.value })}
-                  placeholder="Color"
-                />
-              </div>
-              <div>
-                <Label htmlFor="articleDelivered" className="text-xs">Entregados</Label>
-                <Input
-                  id="articleDelivered"
-                  type="number"
-                  value={newArticle.delivered}
-                  onChange={(e) => setNewArticle({ ...newArticle, delivered: parseInt(e.target.value) || 0 })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="articlePairs" className="text-xs">Pares</Label>
-                <Input
-                  id="articlePairs"
-                  type="number"
-                  value={newArticle.pairs}
-                  onChange={(e) => setNewArticle({ ...newArticle, pairs: parseInt(e.target.value) || 0 })}
-                />
-              </div>
-            </div>
-
-            <Button onClick={handleAddArticle} disabled={!newArticle.name || !newArticle.color} size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Agregar artículo
-            </Button>
-
-            {articles.length > 0 && (
-              <DataTableShell headers={["Artículo", "Color", "Entregados", "Pares", ""]}>
-                {articles.map((article, i) => (
-                  <DataTableRow key={i}>
-                    <DataTableCell className="font-medium">{article.name}</DataTableCell>
-                    <DataTableCell>{article.color}</DataTableCell>
-                    <DataTableCell className="text-right font-mono text-muted-foreground">{article.delivered}</DataTableCell>
-                    <DataTableCell className="text-right font-mono font-semibold">{article.pairs}</DataTableCell>
-                    <DataTableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => handleRemoveArticle(i)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </DataTableCell>
-                  </DataTableRow>
-                ))}
-              </DataTableShell>
-            )}
-
-            <div className="flex justify-between pt-4 border-t">
-              <Button variant="outline" onClick={handleBack}>
-                Volver
-              </Button>
-              <Button onClick={handleSubmit} disabled={articles.length === 0 || createBuyOrder.isPending}>
-                {createBuyOrder.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creando pedido...
-                  </>
-                ) : (
-                  "Crear pedido"
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <Dialog open={showCreateClientDialog} onOpenChange={setShowCreateClientDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Crear nuevo cliente</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="newClientId">ID del cliente</Label>
-              <Input
-                id="newClientId"
-                value={newClientId}
-                onChange={(e) => setNewClientId(e.target.value)}
-                placeholder="ID único"
-                autoFocus
-              />
-            </div>
-            <div>
-              <Label htmlFor="newClientName">Razón Social</Label>
-              <Input
-                id="newClientName"
-                value={newClientName}
-                onChange={(e) => setNewClientName(e.target.value)}
-                placeholder="Nombre del cliente"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateClientDialog(false)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!newClientId.trim() || !newClientName.trim()) return;
-                setIsCreatingClient(true);
-                try {
-                  const newClient = await createClient.mutateAsync({ clientId: newClientId.trim(), clientName: newClientName.trim() });
-                  setSelectedClient(newClient);
-                  setNewClientName("");
-                  setNewClientId("");
-                  setShowCreateClientDialog(false);
-                } catch (err) {
-                  console.error("Error creating client:", err);
-                } finally {
-                  setIsCreatingClient(false);
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Artículos</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setArticles((prev) => {
+                    const lastArticle = prev[prev.length - 1] ?? { ...emptyArticle };
+                    return [...prev, { ...emptyArticle, name: lastArticle.name }];
+                  })
                 }
-              }}
-              disabled={isCreatingClient || !newClientId.trim() || !newClientName.trim()}
-            >
-              {isCreatingClient ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creando...
-                </>
-              ) : (
-                "Crear y seleccionar"
+              >
+                <Plus className="h-4 w-4" />
+                Agregar
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Artículo</TableHead>
+                      <TableHead>Color</TableHead>
+                      <TableHead>Pares</TableHead>
+                      <TableHead className="w-10" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {articles.map((art, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>
+                          <Input value={art.name} onChange={(e) => updateArticle(idx, { name: e.target.value })} />
+                        </TableCell>
+                        <TableCell>
+                          <Input value={art.color} onChange={(e) => updateArticle(idx, { color: e.target.value })} />
+                        </TableCell>
+                        <TableCell className="align-middle">
+                          <Input
+                            type="number"
+                            min={0}
+                            step={12}
+                            value={art.pairs}
+                            onChange={(e) => {
+                              const rawValue = Number.parseInt(e.target.value, 10);
+                              const nextValue = Number.isFinite(rawValue) && rawValue >= 0 ? rawValue : 0;
+                              updateArticle(idx, { pairs: nextValue });
+                            }}
+                            onBlur={(e) => {
+                              const value = Number.parseInt(e.target.value, 10);
+                              if (!Number.isFinite(value) || value < 0) {
+                                updateArticle(idx, { pairs: 0 });
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setArticles((prev) => prev.filter((_, i) => i !== idx))}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="mt-4 space-y-1.5">
+                <Label>Comentarios</Label>
+                <Textarea value={comments} onChange={(e) => setComments(e.target.value)} />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card className="border-border/50 shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Acciones</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button className="w-full" onClick={handleSubmit} disabled={!canSubmit} loading={createOrder.isPending}>
+                {createOrder.isPending ? "Guardando..." : "Guardar pedido"}
+              </Button>
+              {!canSubmit && !createOrder.isPending && missing.length > 0 && (
+                <p className="text-sm text-muted-foreground">Falta: {missing.join(", ")}.</p>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </PageShell>
+              {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 }

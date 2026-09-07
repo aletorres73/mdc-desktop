@@ -1,272 +1,238 @@
 import { Link, useParams } from "react-router-dom";
-import { useClient } from "../hooks/useClients";
-import { useBuyOrders } from "../hooks/useOrders";
-import { useInvoices } from "../hooks/useInvoices";
-import { ROUTES, invoiceDetailRoute, orderDetailRoute } from "../routes/routes";
-import { PageShell, PageHeader, KpiCard, DataTableShell, DataTableRow, DataTableCell, StatusBadge } from "../components/shared";
-import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
-import { Skeleton } from "@/presentation/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
-import { Button } from "@/presentation/components/ui/button";
-import { shareText } from "../utils/shareUtils";
-import { ReportGenerator } from "@/domain/logic/reportGenerator";
-import { toFormattedDate, toPrint } from "@/domain/entities/formatters";
-import { 
-  AlertCircle, ArrowLeft, ClipboardList, FileText, 
-  Wallet, User, Building2, MapPin, Phone, Mail, Plus, Share2
-} from "lucide-react";
 import { useState } from "react";
-
-const valueOrEmpty = (value?: string) => value || "No informado";
+import { useAuth } from "@/presentation/contexts/AuthContext";
+import { useClient, useUpdateClient } from "@/presentation/hooks/useClients";
+import { useBuyOrders } from "@/presentation/hooks/useBuyOrders";
+import { useInvoicesPage } from "@/presentation/hooks/useInvoices";
+import { LoadingState } from "@/presentation/components/shared/LoadingState";
+import { EmptyState } from "@/presentation/components/shared/EmptyState";
+import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
+import { Button } from "@/presentation/components/ui/button";
+import { Input } from "@/presentation/components/ui/input";
+import { Label } from "@/presentation/components/ui/label";
+import { Select } from "@/presentation/components/ui/select";
+import { Badge, stateToBadgeVariant } from "@/presentation/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/presentation/components/ui/tabs";
+import { buttonVariants } from "@/presentation/components/ui/button";
+import { cn, formatDate, formatMoney } from "@/lib/utils";
+import { invoiceDetailPath, orderDetailPath, createOrderPath, ROUTES } from "@/presentation/routes/routes";
+import { ArrowLeft, FileText, PackagePlus, Pencil, Plus, Save, ShoppingBag, X } from "lucide-react";
 
 export default function ClientDetail() {
   const { clientId } = useParams<{ clientId: string }>();
-  const [copied, setCopied] = useState(false);
-  
-  const clientQuery = useClient(clientId ?? null);
-  const ordersQuery = useBuyOrders(clientId ?? null);
-  const invoicesQuery = useInvoices({ state: "Todas", client: clientQuery.data?.clientName ?? "", number: "" });
-  
-  const invoices = invoicesQuery.data?.pages.flatMap((page) => page.items) ?? [];
-  const balance = invoices.reduce((sum, invoice) => sum + invoice.rest, 0);
-  const paid = invoices.reduce((sum, invoice) => sum + invoice.payed, 0);
-  const overdue = invoices
-    .filter((invoice) => invoice.rest > 0 && invoice.payDate > 0 && invoice.payDate < Date.now())
-    .reduce((sum, invoice) => sum + invoice.rest, 0);
+  const { appUser } = useAuth();
+  const { data: client, isLoading: loadingClient } = useClient(appUser?.uid, clientId);
+  const { data: orders, isLoading: loadingOrders } = useBuyOrders(appUser?.uid, clientId);
+  const { data: invoicePage, isLoading: loadingInvoices, isError: invoicesError } = useInvoicesPage(
+    appUser?.uid,
+    { clientId },
+    500,
+  );
+  const updateClient = useUpdateClient(appUser?.uid);
+  const [editing, setEditing] = useState(false);
+  const [clientName, setClientName] = useState("");
+  const [error, setError] = useState("");
+  const [brandFilter, setBrandFilter] = useState("");
+  const [branchFilter, setBranchFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
 
-  const handleShareCurrentAccount = async () => {
-    if (!clientQuery.data) return;
-    const reportText = ReportGenerator.generateCurrentAccountReport(clientQuery.data.clientName, invoices);
-    const success = await shareText(reportText);
-    if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  if (loadingClient) return <LoadingState className="min-h-[60vh]" />;
+  if (!client || !clientId) return <p className="text-muted-foreground">Cliente no encontrado.</p>;
+
+  const invoices = invoicePage?.items ?? [];
+  const brandOptions = Array.from(new Set(invoices.map((invoice) => invoice.brand).filter(Boolean))).map((value) => ({ value, label: value }));
+  const branchOptions = Array.from(new Set(invoices.map((invoice) => invoice.branch).filter(Boolean))).map((value) => ({ value, label: value }));
+  const typeOptions = Array.from(new Set(invoices.map((invoice) => invoice.type).filter(Boolean))).map((value) => ({ value, label: value }));
+  const filteredInvoices = invoices.filter((invoice) =>
+    (!brandFilter || invoice.brand === brandFilter) &&
+    (!branchFilter || invoice.branch === branchFilter) &&
+    (!typeFilter || invoice.type === typeFilter),
+  );
+  const billed = invoices.reduce((sum, invoice) => sum + invoice.toPay, 0);
+  const paid = invoices.reduce((sum, invoice) => sum + invoice.payed, 0);
+  const balance = invoices.reduce((sum, invoice) => sum + invoice.rest, 0);
+
+  const startEditing = () => {
+    setClientName(client.clientName);
+    setError("");
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setError("");
+    setEditing(false);
+  };
+
+  const saveClient = async () => {
+    const nextName = clientName.trim();
+    if (!nextName) {
+      setError("Ingresá la razón social del cliente.");
+      return;
+    }
+    try {
+      setError("");
+      await updateClient.mutateAsync({ clientId, data: { clientName: nextName } });
+      setEditing(false);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "No se pudo actualizar el cliente.");
     }
   };
 
-  if (clientQuery.isLoading) {
-    return (
-      <PageShell>
-        <div className="space-y-6">
-          <Skeleton className="h-16 w-1/3 rounded-xl" />
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
-          </div>
-          <Skeleton className="h-[400px] w-full rounded-xl" />
-        </div>
-      </PageShell>
-    );
-  }
-
-  if (clientQuery.error || !clientQuery.data) {
-    return (
-      <PageShell>
-        <div className="flex min-h-[50vh] w-full items-center justify-center p-6">
-          <div className="text-center">
-            <AlertCircle className="mx-auto h-10 w-10 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold">Cliente no encontrado</h2>
-            <p className="text-muted-foreground mt-2">No se pudo cargar la información del cliente.</p>
-            <Link to={ROUTES.CLIENTS} className="mt-6 inline-flex text-primary hover:underline">
-              Volver al listado
-            </Link>
-          </div>
-        </div>
-      </PageShell>
-    );
-  }
-
-  const client = clientQuery.data;
-
   return (
-    <PageShell maxWidth="default">
-      <PageHeader
-        title={client.clientName}
-        description={`ID: ${client.clientId} • CUIT: ${client.cuit || "N/A"}`}
-        actions={
-          <div className="flex items-center gap-2">
-            <Link to={ROUTES.CLIENTS}>
-              <Button variant="outline" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Volver
-              </Button>
-            </Link>
-            <Button variant="outline" size="sm" onClick={handleShareCurrentAccount}>
-              <Share2 className="mr-2 h-4 w-4" />
-              {copied ? "¡Copiado!" : "Compartir Estado"}
-            </Button>
-            <Link to={ROUTES.CREATE_ORDER}>
-              <Button size="sm">
-                <Plus className="mr-2 h-4 w-4" /> Nuevo Pedido
-              </Button>
-            </Link>
-          </div>
-        }
-      />
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard
-          label="Total Pedidos"
-          value={ordersQuery.data?.length ?? 0}
-          icon={ClipboardList}
-          tone="info"
-        />
-        <KpiCard
-          label="Total Facturas"
-          value={invoices.length}
-          icon={FileText}
-          tone="primary"
-        />
-        <KpiCard
-          label="Saldo Pendiente"
-          value={toPrint(balance)}
-          icon={Wallet}
-          tone={balance > 0 ? "warning" : "success"}
-        />
-        <KpiCard
-          label="Monto Vencido"
-          value={toPrint(overdue)}
-          icon={AlertCircle}
-          tone={overdue > 0 ? "danger" : "primary"}
-        />
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <Link to="/clients" className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-3.5 w-3.5" /> Clientes
+          </Link>
+          <h1 className="text-2xl font-bold tracking-tight">{client.clientName}</h1>
+          <p className="text-sm text-muted-foreground">ID: {clientId}</p>
+        </div>
+        <Link to={createOrderPath(clientId)} className={cn(buttonVariants())}>
+          <PackagePlus className="h-4 w-4" />
+          Nuevo pedido
+        </Link>
       </div>
 
-      <Tabs defaultValue="summary" className="w-full">
-        <TabsList className="mb-6 h-12 w-full justify-start gap-6 rounded-none border-b border-border/50 bg-transparent p-0">
-          <TabsTrigger value="summary" className="rounded-none px-2 py-3 data-[active]:border-b-2 data-[active]:border-primary data-[active]:shadow-none">
-            <User className="mr-2 h-4 w-4" /> Resumen
-          </TabsTrigger>
-          <TabsTrigger value="orders" className="rounded-none px-2 py-3 data-[active]:border-b-2 data-[active]:border-primary data-[active]:shadow-none">
-            <ClipboardList className="mr-2 h-4 w-4" /> Pedidos
-          </TabsTrigger>
-          <TabsTrigger value="invoices" className="rounded-none px-2 py-3 data-[active]:border-b-2 data-[active]:border-primary data-[active]:shadow-none">
-            <FileText className="mr-2 h-4 w-4" /> Facturas
-          </TabsTrigger>
-          <TabsTrigger value="account" className="rounded-none px-2 py-3 data-[active]:border-b-2 data-[active]:border-primary data-[active]:shadow-none">
-            <Wallet className="mr-2 h-4 w-4" /> Cta. Corriente
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="summary" className="space-y-6">
-          <Card className="border-border/50 shadow-sm bg-card">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-muted-foreground" />
-                Información Comercial
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                { label: "Razón social", value: client.clientName, icon: null },
-                { label: "Nombre fantasía", value: client.fantasyName, icon: null },
-                { label: "Dirección comercial", value: client.address, icon: MapPin },
-                { label: "Localidad", value: client.city, icon: null },
-                { label: "Dirección fiscal", value: client.taxAddress, icon: MapPin },
-                { label: "Email", value: client.email, icon: Mail },
-                { label: "Teléfono", value: client.phone, icon: Phone },
-                { label: "Contacto", value: client.contactName, icon: User },
-                { label: "Horario de entrega", value: client.deliveryTime, icon: null }
-              ].map((item) => (
-                <div key={item.label} className="flex flex-col space-y-1">
-                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    {item.icon && <item.icon className="h-3.5 w-3.5" />}
-                    {item.label}
-                  </span>
-                  <span className="text-sm font-medium text-foreground">
-                    {valueOrEmpty(item.value)}
-                  </span>
-                </div>
-              ))}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {[
+          { label: "Facturado", value: formatMoney(billed) },
+          { label: "Cobrado", value: formatMoney(paid) },
+          { label: "Saldo pendiente", value: formatMoney(balance), emphasis: true },
+        ].map((item) => (
+          <Card key={item.label} className={cn("border-border/50 shadow-sm", item.emphasis && "border-amber-500/40 bg-amber-500/[0.04]")}>
+            <CardContent className="p-4">
+              <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+              <p className={cn("mt-1 text-2xl font-bold tracking-tight tabular-nums", item.emphasis && "text-amber-700 dark:text-amber-400")}>{item.value}</p>
             </CardContent>
           </Card>
-        </TabsContent>
+        ))}
+      </div>
 
-        <TabsContent value="orders">
-          {ordersQuery.isLoading ? (
-            <Skeleton className="h-48 w-full" />
-          ) : !ordersQuery.data?.length ? (
-            <Card className="border-border/50 shadow-sm bg-card">
-              <CardContent className="p-8 text-center text-muted-foreground">
-                No hay pedidos registrados para este cliente.
-              </CardContent>
-            </Card>
-          ) : (
-            <DataTableShell headers={["N° Pedido", "Fábrica", "Marca", "Artículos", "Fecha Carga", "Fecha Entrega"]}>
-              {ordersQuery.data.map((order) => (
-                <DataTableRow key={order.id}>
-                  <DataTableCell className="font-medium">
-                    <Link className="text-primary hover:underline font-mono" to={orderDetailRoute(client.clientId, order.id)}>
-                      {order.order}
-                    </Link>
-                  </DataTableCell>
-                  <DataTableCell>{order.factory}</DataTableCell>
-                  <DataTableCell>{order.branch}</DataTableCell>
-                  <DataTableCell className="text-center">
-                    <span className="bg-muted px-2.5 py-1 rounded-md text-xs font-medium">{order.articles.length}</span>
-                  </DataTableCell>
-                  <DataTableCell className="text-muted-foreground">{toFormattedDate(order.loadedDate)}</DataTableCell>
-                  <DataTableCell className="text-muted-foreground">{toFormattedDate(order.deliveryDate)}</DataTableCell>
-                </DataTableRow>
-              ))}
-            </DataTableShell>
-          )}
-        </TabsContent>
-
-        <TabsContent value="invoices">
-          {invoicesQuery.isLoading ? (
-            <Skeleton className="h-48 w-full" />
-          ) : !invoices.length ? (
-            <Card className="border-border/50 shadow-sm bg-card">
-              <CardContent className="p-8 text-center text-muted-foreground">
-                No hay facturas registradas para este cliente.
-              </CardContent>
-            </Card>
-          ) : (
-            <DataTableShell headers={["Emisión", "Número", "Marca", "Total", "Pagado", "Saldo", "Estado"]}>
-              {invoices.map((invoice) => (
-                <DataTableRow key={invoice.billingNumber}>
-                  <DataTableCell className="text-muted-foreground">{toFormattedDate(invoice.loadDate)}</DataTableCell>
-                  <DataTableCell className="font-medium">
-                    <Link className="text-primary hover:underline font-mono" to={invoiceDetailRoute(invoice.billingNumber)}>
-                      {invoice.billingNumber}
-                    </Link>
-                  </DataTableCell>
-                  <DataTableCell>{invoice.brand}</DataTableCell>
-                  <DataTableCell className="text-right">{toPrint(invoice.total)}</DataTableCell>
-                  <DataTableCell className="text-right text-emerald-600 font-medium">{toPrint(invoice.payed)}</DataTableCell>
-                  <DataTableCell className="text-right font-semibold">{toPrint(invoice.rest)}</DataTableCell>
-                  <DataTableCell className="text-center">
-                    <StatusBadge status={invoice.stateBilling || (invoice.rest > 0 ? "Pendiente" : "Pagado")} />
-                  </DataTableCell>
-                </DataTableRow>
-              ))}
-            </DataTableShell>
-          )}
-        </TabsContent>
-
-        <TabsContent value="account">
-          <Card className="border-border/50 shadow-sm bg-card">
-            <CardHeader className="border-b border-border/50 bg-muted/20 pb-6">
-              <CardTitle className="text-lg">Balance General</CardTitle>
-              <p className="text-sm text-muted-foreground">Resumen de cuenta corriente documental histórica.</p>
-            </CardHeader>
-            <CardContent className="p-8">
-              <div className="grid gap-8 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border/50">
-                <div className="space-y-2 sm:pr-8">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Facturado</p>
-                  <p className="text-3xl font-bold tracking-tight">{toPrint(invoices.reduce((sum, i) => sum + i.total, 0))}</p>
+      <div className="flex w-full flex-col gap-6">
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader className="flex-row items-start justify-between space-y-0">
+            <div>
+              <CardTitle className="text-base">Información del cliente</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">Datos principales de la cuenta.</p>
+            </div>
+            {!editing && <Button variant="ghost" size="icon" aria-label="Editar cliente" onClick={startEditing}><Pencil className="h-4 w-4" /></Button>}
+          </CardHeader>
+          <CardContent>
+            {editing ? (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="client-name">Razón social</Label>
+                  <Input id="client-name" value={clientName} onChange={(event) => setClientName(event.target.value)} autoFocus />
                 </div>
-                <div className="space-y-2 pt-6 sm:pt-0 sm:px-8">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Total Pagado</p>
-                  <p className="text-3xl font-bold tracking-tight text-emerald-600">{toPrint(paid)}</p>
-                </div>
-                <div className="space-y-2 pt-6 sm:pt-0 sm:pl-8">
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Deuda Pendiente</p>
-                  <p className={`text-3xl font-bold tracking-tight ${balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{toPrint(balance)}</p>
+                {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+                <div className="flex gap-2">
+                  <Button onClick={saveClient} loading={updateClient.isPending}><Save className="h-4 w-4" />{updateClient.isPending ? "Guardando..." : "Guardar"}</Button>
+                  <Button variant="outline" onClick={cancelEditing} disabled={updateClient.isPending}><X className="h-4 w-4" />Cancelar</Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </PageShell>
+            ) : (
+              <dl className="space-y-4 text-sm">
+                <div><dt className="text-muted-foreground">Razón social</dt><dd className="mt-1 font-medium">{client.clientName}</dd></div>
+                <div><dt className="text-muted-foreground">Identificador</dt><dd className="mt-1 font-medium tabular-nums">{client.clientId}</dd></div>
+              </dl>
+            )}
+          </CardContent>
+        </Card>
+
+        <Tabs defaultValue="orders" className="w-full min-w-0">
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="orders" className="flex-1 gap-2 sm:flex-none"><ShoppingBag className="h-4 w-4" />Pedidos</TabsTrigger>
+            <TabsTrigger value="account" className="flex-1 gap-2 sm:flex-none"><FileText className="h-4 w-4" />Cuenta corriente</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="orders">
+            <Card className="border-border/50 shadow-sm">
+              <CardHeader><CardTitle className="text-base">Pedidos de compra</CardTitle></CardHeader>
+              <CardContent>
+                {loadingOrders ? <LoadingState /> : !orders?.length ? (
+                  <EmptyState icon={ShoppingBag} title="Sin pedidos" description="Este cliente todavía no tiene pedidos cargados." />
+                ) : (
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Pedido</TableHead><TableHead>Fábrica</TableHead><TableHead>Marca</TableHead><TableHead>Entrega</TableHead></TableRow></TableHeader>
+                    <TableBody>{orders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell><Link to={orderDetailPath(clientId, order.id)} className="font-medium hover:underline">{order.order}</Link></TableCell>
+                        <TableCell>{order.factory}</TableCell><TableCell>{order.branch}</TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(order.deliveryDate)}</TableCell>
+                      </TableRow>
+                    ))}</TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="account">
+            <Card className="border-border/50 shadow-sm">
+              <CardHeader className="flex-row items-center justify-between space-y-0">
+                <div><CardTitle className="text-base">Cuenta corriente</CardTitle><p className="mt-1 text-sm text-muted-foreground">Facturación, pagos y saldo de este cliente.</p></div>
+                <Link to={ROUTES.CREATE_INVOICE} className={cn(buttonVariants({ size: "sm" }))}>
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Nueva factura sin pedido</span>
+                  <span className="sm:hidden">Nueva factura</span>
+                </Link>
+              </CardHeader>
+              <CardContent>
+                {loadingInvoices ? <LoadingState /> : invoicesError ? (
+                  <p className="py-10 text-center text-sm text-destructive">No se pudo cargar la cuenta corriente. Revisá la conexión e intentá nuevamente.</p>
+                ) : !invoices.length ? (
+                  <EmptyState icon={FileText} title="Sin facturas" description="Todavía no hay facturaciones asociadas a este cliente." />
+                ) : (
+                  <>
+                    <div className="mb-4 flex flex-wrap items-end gap-3">
+                      <div className="min-w-44 flex-1 space-y-1.5 sm:flex-none">
+                        <Label htmlFor="account-brand-filter">Fábrica</Label>
+                        <Select id="account-brand-filter" className="w-full sm:w-44" placeholder="Todas" options={brandOptions} value={brandFilter} onChange={(event) => setBrandFilter(event.target.value)} />
+                      </div>
+                      <div className="min-w-44 flex-1 space-y-1.5 sm:flex-none">
+                        <Label htmlFor="account-branch-filter">Segmento</Label>
+                        <Select id="account-branch-filter" className="w-full sm:w-44" placeholder="Todos" options={branchOptions} value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} />
+                      </div>
+                      <div className="min-w-44 flex-1 space-y-1.5 sm:flex-none">
+                        <Label htmlFor="account-type-filter">Tipo</Label>
+                        <Select id="account-type-filter" className="w-full sm:w-44" placeholder="Todos" options={typeOptions} value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} />
+                      </div>
+                      {(brandFilter || branchFilter || typeFilter) && (
+                        <Button variant="ghost" onClick={() => { setBrandFilter(""); setBranchFilter(""); setTypeFilter(""); }}>Limpiar filtros</Button>
+                      )}
+                    </div>
+                    {!filteredInvoices.length ? (
+                      <EmptyState icon={FileText} title="Sin resultados" description="No hay facturas que coincidan con los filtros seleccionados." />
+                    ) : (
+                      <Table>
+                        <TableHeader><TableRow><TableHead>Factura</TableHead><TableHead>Datos</TableHead><TableHead>Fecha</TableHead><TableHead>Vencimiento</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Saldo</TableHead></TableRow></TableHeader>
+                        <TableBody>{filteredInvoices.map((invoice) => (
+                          <TableRow key={invoice.id}>
+                            <TableCell><Link to={invoiceDetailPath(invoice.id!)} className="font-medium hover:underline">{invoice.billingNumber}</Link></TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1.5">
+                                <Badge variant="default">Marca: {invoice.brand}</Badge>
+                                {invoice.branch && <Badge variant="muted">Segmento: {invoice.branch}</Badge>}
+                                <Badge variant="info">{invoice.type}</Badge>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{formatDate(invoice.loadDate)}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatDate(invoice.payDate)}</TableCell>
+                            <TableCell><Badge variant={stateToBadgeVariant(invoice.stateBilling)}>{invoice.stateBilling}</Badge></TableCell>
+                            <TableCell className="text-right font-medium tabular-nums">{formatMoney(invoice.rest)}</TableCell>
+                          </TableRow>
+                        ))}</TableBody>
+                      </Table>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
   );
 }

@@ -1,18 +1,22 @@
-import type { BillingModel, InvoicePageDomain } from "../entities/invoice";
+import type { BillingModel, InvoicePage } from "@/domain/entities/billing";
 
-export interface FetchInvoiceOptions {
-  filters?: Array<{ field: string; op: string; value: unknown }>;
-  orderByField?: string;
-  direction?: "asc" | "desc";
-  pageSize?: number;
-  startAfter?: unknown;
+export interface InvoiceFilters {
+  clientId?: string;
+  clientNamePrefix?: string;
+  brand?: string;
+  state?: string;
 }
 
 export interface IInvoiceRepository {
-  fetchPage(uid: string, options: FetchInvoiceOptions): Promise<InvoicePageDomain>;
-  getInvoiceByNumber(uid: string, invoiceNumber: string): Promise<BillingModel | null>;
-  getAllBillings(uid: string): Promise<BillingModel[]>;
-  createInvoice(uid: string, billing: BillingModel): Promise<BillingModel>;
-  updateInvoice(uid: string, billingNumber: string, data: Partial<BillingModel>): Promise<void>;
-  deleteInvoice(uid: string, billingNumber: string): Promise<void>;
+  getInvoicesPage(
+    uid: string,
+    filters: InvoiceFilters,
+    pageSize: number,
+    cursor?: string | null,
+  ): Promise<InvoicePage>;
+  getInvoice(uid: string, id: string): Promise<BillingModel | null>;
+  getInvoiceByBillingNumber(uid: string, billingNumber: string): Promise<BillingModel | null>;
+  createInvoice(uid: string, billing: BillingModel): Promise<string>;
+  updateInvoice(uid: string, id: string, data: Partial<BillingModel>): Promise<void>;
+  deleteInvoice(uid: string, id: string): Promise<void>;
 }

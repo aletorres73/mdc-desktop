@@ -1,175 +1,86 @@
-import { db } from "./config";
 import {
+  collection,
+  collectionGroup,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   deleteDoc,
   addDoc,
-  collection,
   query,
   where,
   orderBy,
   limit,
   startAfter,
-  Timestamp,
-  getDocs,
-  DocumentData,
-  QueryConstraint,
-  WhereFilterOp,
-  UpdateData,
-  onSnapshot,
+  type DocumentData,
+  type QueryConstraint,
+  type QueryDocumentSnapshot,
 } from "firebase/firestore";
+import { db } from "@/data/datasources/config";
 
-function normalizeFirestoreValue(value: unknown): unknown {
-  if (value instanceof Timestamp) return value.toMillis();
-  if (value instanceof Date) return value.getTime();
-  if (Array.isArray(value)) return value.map(normalizeFirestoreValue);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, nestedValue]) => [
-        key,
-        normalizeFirestoreValue(nestedValue),
-      ])
-    );
-  }
-  return value;
-}
-
-function normalizeDocument<T>(id: string, data: DocumentData): T {
-  const normalizedData = normalizeFirestoreValue(data);
-  return {
-    ...(normalizedData as Record<string, unknown>),
-    id,
-  } as T;
-}
-
-// Firestore rejects `undefined` values (including nested in arrays/objects); strip them before writing.
-function stripUndefined<T>(value: T): T {
+// Firestore rejects `undefined` values, including nested inside arrays/objects.
+export function stripUndefined<T>(value: T): T {
   if (Array.isArray(value)) {
-    return value.map((item) => stripUndefined(item)) as unknown as T;
+    return value.map((v) => stripUndefined(v)) as unknown as T;
   }
-  if (value && typeof value === "object" && !(value instanceof Timestamp) && !(value instanceof Date)) {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .filter(([, v]) => v !== undefined)
-        .map(([k, v]) => [k, stripUndefined(v)])
-    ) as T;
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (v !== undefined) out[k] = stripUndefined(v);
+    }
+    return out as T;
   }
   return value;
 }
 
-export async function getDocument<T = DocumentData>(
-  collectionName: string,
-  docId: string
-): Promise<T | null> {
-  const docRef = doc(db, collectionName, docId);
-  const docSnap = await getDoc(docRef);
-
-  if (!docSnap.exists()) return null;
-  return normalizeDocument<T>(docSnap.id, docSnap.data());
+export function colRef(path: string) {
+  return collection(db, path);
 }
 
-export async function setDocument(
-  collectionName: string,
-  docId: string,
-  data: Record<string, unknown>
-): Promise<void> {
-  const docRef = doc(db, collectionName, docId);
-  await setDoc(docRef, stripUndefined(data));
+export function docRef(path: string, id: string) {
+  return doc(db, path, id);
 }
 
-export async function updateDocument(
-  collectionName: string,
-  docId: string,
-  data: Record<string, unknown>
-): Promise<void> {
-  const docRef = doc(db, collectionName, docId);
-  await updateDoc(docRef, stripUndefined(data) as UpdateData<DocumentData>);
-}
-
-export async function deleteDocument(
-  collectionName: string,
-  docId: string
-): Promise<void> {
-  const docRef = doc(db, collectionName, docId);
-  await deleteDoc(docRef);
-}
-
-export async function addDocument(
-  collectionName: string,
-  data: Record<string, unknown>
-): Promise<string> {
-  const colRef = collection(db, collectionName);
-  const docRef = await addDoc(colRef, stripUndefined(data));
-  return docRef.id;
+export async function getDocument<T = DocumentData>(path: string, id: string): Promise<T | null> {
+  const snap = await getDoc(docRef(path, id));
+  return snap.exists() ? ({ id: snap.id, ...(snap.data() as object) } as T) : null;
 }
 
 export async function getCollection<T = DocumentData>(
-  collectionName: string,
-  options?: {
-    filters?: Array<{ field: string; op: "=" | "==" | "<" | "<=" | ">" | ">=" | "array-contains" | "in"; value: unknown }>;
-    orderBy?: { field: string; direction?: "asc" | "desc" };
-    limit?: number;
-    startAfter?: unknown;
-  }
+  path: string,
+  constraints: QueryConstraint[] = [],
 ): Promise<T[]> {
-  const colRef = collection(db, collectionName);
-  const constraints: QueryConstraint[] = [];
-
-  if (options?.filters && options.filters.length > 0) {
-    for (const filter of options.filters) {
-      const operator = filter.op === "=" ? "==" : filter.op;
-      constraints.push(where(filter.field, operator as WhereFilterOp, filter.value));
-    }
-  }
-
-  if (options?.orderBy) {
-    constraints.push(orderBy(options.orderBy.field, options.orderBy.direction || "asc"));
-  }
-
-  if (options?.limit) {
-    constraints.push(limit(options.limit));
-  }
-
-  if (options?.startAfter !== undefined && options.startAfter !== null) {
-    constraints.push(startAfter(options.startAfter));
-  }
-
-  const q = query(colRef, ...constraints);
-  const querySnapshot = await getDocs(q);
-
-  return querySnapshot.docs.map((docSnap) =>
-    normalizeDocument<T>(docSnap.id, docSnap.data())
-  );
+  const q = query(colRef(path), ...constraints);
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, __path: d.ref.path, ...(d.data() as object) })) as T[];
 }
 
-export function subscribeCollection<T = DocumentData>(
-  collectionName: string,
-  callback: (data: T[]) => void,
-  options?: Parameters<typeof getCollection>[1]
-): () => void {
-  const colRef = collection(db, collectionName);
-  const constraints: QueryConstraint[] = [];
-
-  if (options?.filters) {
-    for (const filter of options.filters) {
-      const operator = filter.op === "=" ? "==" : filter.op;
-      constraints.push(where(filter.field, operator as WhereFilterOp, filter.value));
-    }
-  }
-  if (options?.orderBy) {
-    constraints.push(orderBy(options.orderBy.field, options.orderBy.direction || "asc"));
-  }
-  if (options?.limit) constraints.push(limit(options.limit));
-  if (options?.startAfter !== undefined && options.startAfter !== null) {
-    constraints.push(startAfter(options.startAfter));
-  }
-
-  const unsubscribe = onSnapshot(query(colRef, ...constraints), (snapshot) => {
-    callback(snapshot.docs.map((docSnap) => normalizeDocument<T>(docSnap.id, docSnap.data())));
-  });
-  return unsubscribe;
+export async function getCollectionGroup<T = DocumentData>(
+  collectionId: string,
+  constraints: QueryConstraint[] = [],
+): Promise<T[]> {
+  const q = query(collectionGroup(db, collectionId), ...constraints);
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, __path: d.ref.path, ...(d.data() as object) })) as T[];
 }
 
-export { where, orderBy, limit, query };
+export async function setDocument(path: string, id: string, data: unknown): Promise<void> {
+  await setDoc(docRef(path, id), stripUndefined(data) as DocumentData, { merge: true });
+}
+
+export async function addDocument(path: string, data: unknown): Promise<string> {
+  const ref = await addDoc(colRef(path), stripUndefined(data) as DocumentData);
+  return ref.id;
+}
+
+export async function updateDocument(path: string, id: string, data: unknown): Promise<void> {
+  await updateDoc(docRef(path, id), stripUndefined(data) as DocumentData);
+}
+
+export async function deleteDocument(path: string, id: string): Promise<void> {
+  await deleteDoc(docRef(path, id));
+}
+
+export { where, orderBy, limit, startAfter };
+export type { QueryDocumentSnapshot };

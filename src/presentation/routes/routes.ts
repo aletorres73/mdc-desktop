@@ -1,44 +1,46 @@
 export const ROUTES = {
-  HOME: "/",
   LOGIN: "/login",
   SIGN_UP: "/sign-up",
   FORGOT_PASSWORD: "/forgot-password",
   SUBSCRIPTION: "/subscription",
+  PROFILE: "/profile",
+  HOME: "/",
+  INVOICES: "/invoices",
+  CREATE_INVOICE: "/invoices/new",
+  INVOICE_DETAIL: "/invoices/:invoiceId",
+  EDIT_INVOICE: "/invoices/:invoiceId/edit",
   CLIENTS: "/clients",
   CLIENT_DETAIL: "/clients/:clientId",
-  INVOICES: "/invoices",
-  INVOICE_DETAIL: "/invoices/:invoiceNumber",
   ORDERS: "/orders",
-  ORDER_DETAIL: "/orders/:clientId/:orderId",
-  CREATE_ORDER: "/orders/create",
+  ORDER_DETAIL: "/clients/:clientId/orders/:orderId",
+  CREATE_ORDER: "/clients/:clientId/orders/new",
   FACTORIES: "/factories",
   FACTORY_DETAIL: "/factories/:factoryName",
-  COMMISSIONS: "/commissions",
   AGENDA: "/agenda",
-  PROFILE: "/profile",
+  COMMISSIONS: "/commissions",
   PAYMENT_REGISTER: "/payment-register",
 } as const;
 
-export function clientDetailRoute(clientId: string) {
-  return `/clients/${encodeURIComponent(clientId)}`;
+export function invoiceDetailPath(invoiceId: string) {
+  return `/invoices/${invoiceId}`;
 }
 
-export function orderDetailRoute(clientId: string, orderId: string) {
-  return `/orders/${encodeURIComponent(clientId)}/${encodeURIComponent(orderId)}`;
+export function editInvoicePath(invoiceId: string) {
+  return `/invoices/${invoiceId}/edit`;
 }
 
-export function invoiceDetailRoute(invoiceNumber: string) {
-  return `/invoices/${encodeURIComponent(invoiceNumber)}`;
+export function clientDetailPath(clientId: string) {
+  return `/clients/${clientId}`;
 }
 
-export function factoryDetailRoute(factoryName: string) {
+export function orderDetailPath(clientId: string, orderId: string) {
+  return `/clients/${clientId}/orders/${orderId}`;
+}
+
+export function createOrderPath(clientId: string) {
+  return `/clients/${clientId}/orders/new`;
+}
+
+export function factoryDetailPath(factoryName: string) {
   return `/factories/${encodeURIComponent(factoryName)}`;
-}
-
-export function createOrderRoute(clientId?: string, orderId?: string) {
-  const params = new URLSearchParams();
-  if (clientId) params.set("clientId", clientId);
-  if (orderId) params.set("orderId", orderId);
-  const qs = params.toString();
-  return `/orders/create${qs ? `?${qs}` : ""}`;
 }

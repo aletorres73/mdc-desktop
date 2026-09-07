@@ -1,35 +1,51 @@
-import type { IPaymentRegisterRepository, PaymentRegisterFilters } from "@/domain/repositories/IPaymentRegisterRepository";
-import type { MovementStatus, PaymentRegisterModel } from "@/domain/entities/paymentRegister";
-import { deleteDocument, getCollection, setDocument, updateDocument } from "../datasources";
-import type { RemotePaymentRegisterResult } from "../remote/remoteResultPaymentRegister";
-import { toPaymentRegisterDomain, toPaymentRegisterRemote } from "../mappers/paymentRegisterMapper";
-
-function paymentsPath(uid: string): string { return `users/${uid}/paymentRegister`; }
+import {
+  getCollection,
+  setDocument,
+  updateDocument,
+  deleteDocument,
+  where,
+  orderBy,
+  limit,
+} from "@/data/datasources/firestore";
+import { toPaymentRegisterDomain, toPaymentRegisterRemote } from "@/data/mappers/paymentRegisterMapper";
+import type { RemotePaymentRegisterResult } from "@/data/remote/remotePaymentRegister";
+import type { IPaymentRegisterRepository } from "@/domain/repositories/IPaymentRegisterRepository";
+import type { PaymentRegisterModel } from "@/domain/entities/paymentRegister";
 
 export class FirestorePaymentRegisterRepository implements IPaymentRegisterRepository {
-  async getAll(uid: string, filters: PaymentRegisterFilters = {}): Promise<PaymentRegisterModel[]> {
-    const remoteFilters = [
-      filters.clientId ? { field: "Cliente ID", op: "=" as const, value: filters.clientId } : null,
-      filters.branch ? { field: "Marca", op: "=" as const, value: filters.branch } : null,
-    ].filter((filter): filter is { field: string; op: "="; value: string } => filter !== null);
-    const docs = await getCollection<RemotePaymentRegisterResult>(paymentsPath(uid), {
-      filters: remoteFilters, orderBy: { field: "Fecha", direction: "desc" },
-    });
-    return docs.map(toPaymentRegisterDomain);
+  private path(uid: string) {
+    return `users/${uid}/paymentRegister`;
   }
 
-  async getLastId(uid: string): Promise<number> {
-    const docs = await getCollection<RemotePaymentRegisterResult>(paymentsPath(uid));
-    return docs.reduce((lastId, payment) => Math.max(lastId, Number(payment["Pago Id"]) || 0), 0);
+  async getMovements(
+    uid: string,
+    filters?: { clientId?: string; branch?: string },
+  ): Promise<PaymentRegisterModel[]> {
+    const constraints = [];
+    if (filters?.clientId) constraints.push(where("Cliente ID", "==", filters.clientId));
+    if (filters?.branch) constraints.push(where("Marca", "==", filters.branch));
+    const remote = await getCollection<RemotePaymentRegisterResult>(this.path(uid), constraints);
+    return remote.map(toPaymentRegisterDomain);
   }
 
-  async save(uid: string, payment: PaymentRegisterModel): Promise<void> {
-    await setDocument(paymentsPath(uid), String(payment.id), toPaymentRegisterRemote(payment) as unknown as Record<string, unknown>);
+  async createMovement(uid: string, movement: PaymentRegisterModel): Promise<void> {
+    await setDocument(this.path(uid), String(movement.id), toPaymentRegisterRemote(movement));
   }
 
-  async updateStatus(uid: string, paymentId: number, status: MovementStatus, date: number): Promise<void> {
-    await updateDocument(paymentsPath(uid), String(paymentId), { Estado: status, "Fecha Conciliacion": date, "Fecha Confirmacion": date });
+  async updateMovement(uid: string, id: number, data: Partial<PaymentRegisterModel>): Promise<void> {
+    await updateDocument(this.path(uid), String(id), data);
   }
 
-  async delete(uid: string, paymentId: number): Promise<void> { await deleteDocument(paymentsPath(uid), String(paymentId)); }
+  async deleteMovement(uid: string, id: number): Promise<void> {
+    await deleteDocument(this.path(uid), String(id));
+  }
+
+  async getNextId(uid: string): Promise<number> {
+    const remote = await getCollection<RemotePaymentRegisterResult>(this.path(uid), [
+      orderBy("Pago Id", "desc"),
+      limit(1),
+    ]);
+    const lastId = remote[0]?.["Pago Id"] || 0;
+    return lastId + 1;
+  }
 }

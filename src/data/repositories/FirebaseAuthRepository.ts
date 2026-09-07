@@ -1,66 +1,43 @@
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  onAuthStateChanged as firebaseOnAuthStateChanged,
+} from "firebase/auth";
+import { auth } from "@/data/datasources/config";
 import type { IAuthRepository } from "@/domain/repositories/IAuthRepository";
 import type { AppUser } from "@/domain/entities/user";
-import {
-  signIn as dsSignIn,
-  signUp as dsSignUp,
-  signOut as dsSignOut,
-  updateUserPassword as dsUpdatePassword,
-  reauthenticate as dsReauthenticate,
-  deleteCurrentUser as dsDeleteUser,
-  sendPasswordReset as dsSendReset,
-  onAuthStateChange as dsOnAuthStateChange,
-} from "../datasources";
+
+function toAppUser(user: { uid: string; email: string | null; displayName: string | null } | null): AppUser | null {
+  if (!user) return null;
+  return { uid: user.uid, email: user.email, displayName: user.displayName };
+}
 
 export class FirebaseAuthRepository implements IAuthRepository {
   async signIn(email: string, password: string): Promise<AppUser> {
-    const user = await dsSignIn(email, password);
-    return {
-      uid: user.uid,
-      email: user.email ?? "",
-      displayName: user.displayName ?? undefined,
-    };
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    return toAppUser(cred.user)!;
   }
 
-  async signUp(email: string, password: string, displayName?: string): Promise<AppUser> {
-    const user = await dsSignUp(email, password, displayName);
-    return {
-      uid: user.uid,
-      email: user.email ?? "",
-      displayName: user.displayName ?? undefined,
-    };
+  async signUp(email: string, password: string): Promise<AppUser> {
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    return toAppUser(cred.user)!;
   }
 
   async signOut(): Promise<void> {
-    await dsSignOut();
+    await firebaseSignOut(auth);
   }
 
-  async updatePassword(newPassword: string): Promise<void> {
-    await dsUpdatePassword(newPassword);
+  async resetPassword(email: string): Promise<void> {
+    await sendPasswordResetEmail(auth, email);
   }
 
-  async reauthenticate(password: string): Promise<void> {
-    await dsReauthenticate(password);
+  getCurrentUser(): AppUser | null {
+    return toAppUser(auth.currentUser);
   }
 
-  async deleteUser(): Promise<void> {
-    await dsDeleteUser();
-  }
-
-  async sendPasswordReset(email: string): Promise<void> {
-    await dsSendReset(email);
-  }
-
-  onAuthStateChange(callback: (user: AppUser | null) => void): () => void {
-    return dsOnAuthStateChange((user) => {
-      if (!user) {
-        callback(null);
-      } else {
-        callback({
-          uid: user.uid,
-          email: user.email ?? "",
-          displayName: user.displayName ?? undefined,
-        });
-      }
-    });
+  onAuthStateChanged(callback: (user: AppUser | null) => void): () => void {
+    return firebaseOnAuthStateChanged(auth, (user) => callback(toAppUser(user)));
   }
 }

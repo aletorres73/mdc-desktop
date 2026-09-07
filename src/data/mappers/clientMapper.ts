@@ -1,20 +1,10 @@
-import type { ClientModel } from "@/domain/entities/client";
-import type { RemoteResultClientModel } from "../remote/remoteResultClient";
+import type { RemoteResultClientModel, RemoteResultInfoClientModel } from "@/data/remote/remoteClient";
+import type { ClientModel, InfoClientModel } from "@/domain/entities/client";
 
 export function toClientDomain(remote: RemoteResultClientModel): ClientModel {
   return {
-    clientId: remote["Cliente Id"],
-    clientName: remote["Razón Social"],
-    fantasyName: remote["Nombre fantasia"],
-    cuit: remote.CUIT,
-    address: remote["Direccion Comercio"],
-    taxAddress: remote["Direccion Fiscal"],
-    city: remote["Localidad Comercio"],
-    taxCity: remote["Localidad Fiscal"],
-    deliveryTime: remote["Horario de entrega"],
-    email: remote.Email,
-    phone: remote.Telefono,
-    contactName: remote.Contacto,
+    clientId: remote["Cliente Id"] || "",
+    clientName: remote["Razón Social"] || "",
   };
 }
 
@@ -22,15 +12,39 @@ export function toClientRemote(domain: ClientModel): RemoteResultClientModel {
   return {
     "Cliente Id": domain.clientId,
     "Razón Social": domain.clientName,
+  };
+}
+
+export function toInfoClientDomain(remote: RemoteResultInfoClientModel): InfoClientModel {
+  return {
+    clientId: remote["Cliente Id"] || "",
+    clientName: remote["Razón Social"] || "",
+    fantasyName: remote["Nombre fantasia"] || "",
+    cuit: remote["CUIT"] || "",
+    commercialAddress: remote["Direccion Comercio"] || "",
+    fiscalAddress: remote["Direccion Fiscal"] || "",
+    commercialLocation: remote["Localidad Comercio"] || "",
+    fiscalLocation: remote["Localidad Fiscal"] || "",
+    deliverySchedule: remote["Horario de entrega"] || "",
+    email: remote["Email"] || "",
+    phone: remote["Telefono"] || "",
+    contact: remote["Contacto"] || "",
+  };
+}
+
+export function toInfoClientRemote(domain: InfoClientModel): RemoteResultInfoClientModel {
+  return {
+    "Cliente Id": domain.clientId,
+    "Razón Social": domain.clientName,
     "Nombre fantasia": domain.fantasyName,
     CUIT: domain.cuit,
-    "Direccion Comercio": domain.address,
-    "Direccion Fiscal": domain.taxAddress,
-    "Localidad Comercio": domain.city,
-    "Localidad Fiscal": domain.taxCity,
-    "Horario de entrega": domain.deliveryTime,
+    "Direccion Comercio": domain.commercialAddress,
+    "Direccion Fiscal": domain.fiscalAddress,
+    "Localidad Comercio": domain.commercialLocation,
+    "Localidad Fiscal": domain.fiscalLocation,
+    "Horario de entrega": domain.deliverySchedule,
     Email: domain.email,
     Telefono: domain.phone,
-    Contacto: domain.contactName,
+    Contacto: domain.contact,
   };
 }

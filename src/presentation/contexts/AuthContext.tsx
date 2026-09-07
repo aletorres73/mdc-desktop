@@ -1,89 +1,54 @@
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  type ReactNode,
-} from "react";
-import { container } from "@/di/container";
-import { auth } from "@/data/datasources/client";
-import type { AppUser } from "@/domain/entities/user";
+import * as React from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { authUseCase, userRepository } from "@/di/container";
+import type { AppUser, UserModel } from "@/domain/entities/user";
 
 interface AuthContextValue {
-  user: AppUser | null;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName?: string) => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  logout: () => Promise<void>;
-  updatePassword: (newPassword: string) => Promise<void>;
-  reauthenticate: (password: string) => Promise<void>;
-  getIdToken: () => Promise<string | null>;
+  appUser: AppUser | null;
+  userProfile: UserModel | null;
+  loading: boolean;
+  isSubscriptionActive: boolean;
+  refreshProfile: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AppUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
+  const [userProfile, setUserProfile] = useState<UserModel | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadProfile = async (uid: string) => {
+    const profile = await userRepository.getUser(uid);
+    setUserProfile(profile);
+  };
 
   useEffect(() => {
-    const unsubscribe = container.authUseCase.onAuthStateChange((appUser) => {
-      setUser(appUser);
-      setIsLoading(false);
+    const unsubscribe = authUseCase.onAuthStateChanged(async (user) => {
+      setAppUser(user);
+      if (user) {
+        await loadProfile(user.uid);
+      } else {
+        setUserProfile(null);
+      }
+      setLoading(false);
     });
-
-    return () => unsubscribe();
+    return unsubscribe;
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    await container.authUseCase.signIn(email, password);
-  }, []);
+  const refreshProfile = async () => {
+    if (appUser) await loadProfile(appUser.uid);
+  };
 
-  const register = useCallback(
-    async (email: string, password: string, displayName?: string) => {
-      await container.authUseCase.signUp(email, password, displayName);
-    },
-    []
-  );
+  const signOut = async () => {
+    await authUseCase.signOut();
+  };
 
-  const resetPassword = useCallback(async (email: string) => {
-    await container.authUseCase.sendPasswordReset(email);
-  }, []);
-
-  const logout = useCallback(async () => {
-    await container.authUseCase.signOut();
-  }, []);
-
-  const updatePassword = useCallback(async (newPassword: string) => {
-    await container.authUseCase.updatePassword(newPassword);
-  }, []);
-
-  const reauthenticate = useCallback(async (password: string) => {
-    await container.authUseCase.reauthenticate(password);
-  }, []);
-
-  const getIdToken = useCallback(async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) return null;
-    return await currentUser.getIdToken();
-  }, []);
+  const isSubscriptionActive = authUseCase.isSubscriptionActive(userProfile);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        login,
-        register,
-        resetPassword,
-        logout,
-        updatePassword,
-        reauthenticate,
-        getIdToken,
-      }}
-    >
+    <AuthContext.Provider value={{ appUser, userProfile, loading, isSubscriptionActive, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );
@@ -91,6 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

@@ -1,159 +1,120 @@
-"use client";
-
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useInvoices, INVOICE_STATES } from "../hooks/useInvoices";
-import type { InvoiceFilters } from "@/domain/entities/invoice";
-import { PageShell, PageHeader, DataTableShell, DataTableRow, DataTableCell, DataState, StatusBadge } from "../components/shared";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/presentation/components/ui/select";
+import { useAuth } from "@/presentation/contexts/AuthContext";
+import { useInvoicesPage } from "@/presentation/hooks/useInvoices";
 import { Input } from "@/presentation/components/ui/input";
+import { Select } from "@/presentation/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
+import { Badge, stateToBadgeVariant } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
-import { Search, Filter, ChevronDown, FileText } from "lucide-react";
-import { invoiceDetailRoute } from "../routes/routes";
-import { toFormattedDate, toPrint } from "@/domain/entities/formatters";
+import { LoadingState } from "@/presentation/components/shared/LoadingState";
+import { EmptyState } from "@/presentation/components/shared/EmptyState";
+import { formatMoney, formatDate } from "@/lib/utils";
+import { invoiceDetailPath, ROUTES } from "@/presentation/routes/routes";
+import { Plus, Receipt, Search } from "lucide-react";
+
+const STATE_OPTIONS = [
+  { value: "Pendiente", label: "Pendiente" },
+  { value: "Vencido", label: "Vencido" },
+  { value: "Por vencer", label: "Por vencer" },
+  { value: "Cobrado", label: "Cobrado" },
+];
 
 export default function Invoices() {
-  const [filters, setFilters] = useState<InvoiceFilters>({
-    state: "Todas",
-    client: "",
-    number: "",
-  });
+  const { appUser } = useAuth();
+  const [clientSearch, setClientSearch] = useState("");
+  const [state, setState] = useState("");
+  const [cursor, setCursor] = useState<string | null>(null);
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error } = useInvoices(filters);
-
-  const invoices = data?.pages.flatMap((page) => page.items) ?? [];
-
-  const handleFilterChange = useCallback(
-    (key: keyof InvoiceFilters, value: string | null) => {
-      setFilters((prev) => ({ ...prev, [key]: value ?? "" }));
-    },
-    []
-  );
+  const filters = { clientNamePrefix: clientSearch || undefined, state: state || undefined };
+  const { data: page, isLoading } = useInvoicesPage(appUser?.uid, filters, 20, cursor);
 
   return (
-    <PageShell>
-      <PageHeader
-        title="Facturas"
-        description="Gestión de facturación, cobranzas y vencimientos"
-        icon={FileText}
-      />
+    <div className="flex flex-col gap-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Facturas</h1>
+          <p className="text-sm text-muted-foreground">Explorador global de facturación.</p>
+        </div>
+        <Link to={ROUTES.CREATE_INVOICE} className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90">
+          <Plus className="h-4 w-4" /> Nueva factura
+        </Link>
+      </div>
 
-      <Card className="border-border/50 shadow-sm bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Filtros de búsqueda</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="flex-1 min-w-[180px]">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Estado</label>
-              <Select value={filters.state} onValueChange={(v) => handleFilterChange("state", v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  {INVOICE_STATES.map((state) => (
-                    <SelectItem key={state} value={state}>
-                      {state}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="flex flex-wrap gap-3">
+        <div className="relative w-56">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por razón social..."
+            className="pl-9"
+            value={clientSearch}
+            onChange={(e) => {
+              setClientSearch(e.target.value);
+              setCursor(null);
+            }}
+          />
+        </div>
+        <Select
+          className="w-48"
+          placeholder="Estado"
+          options={STATE_OPTIONS}
+          value={state}
+          onChange={(e) => {
+            setState(e.target.value);
+            setCursor(null);
+          }}
+        />
+      </div>
 
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Cliente</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por razón social..."
-                  value={filters.client}
-                  onChange={(e) => handleFilterChange("client", e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <div className="flex-1 min-w-[180px]">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">Número</label>
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por número..."
-                  value={filters.number}
-                  onChange={(e) => handleFilterChange("number", e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
+      {isLoading ? (
+        <LoadingState />
+      ) : !page?.items.length ? (
+        <EmptyState icon={Receipt} title="Sin facturas" description="No hay facturas para los filtros aplicados." />
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Número</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Marca</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Saldo</TableHead>
+                <TableHead>Vencimiento</TableHead>
+                <TableHead>Estado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {page.items.map((invoice) => (
+                <TableRow key={invoice.id}>
+                  <TableCell>
+                    <Link to={invoiceDetailPath(invoice.id!)} className="font-medium hover:underline">
+                      {invoice.billingNumber}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="max-w-[180px] truncate">{invoice.clientName}</TableCell>
+                  <TableCell>{invoice.brand}</TableCell>
+                  <TableCell className="tabular-nums">{formatMoney(invoice.total)}</TableCell>
+                  <TableCell className="tabular-nums">{formatMoney(invoice.rest)}</TableCell>
+                  <TableCell className="text-muted-foreground">{formatDate(invoice.payDate)}</TableCell>
+                  <TableCell>
+                    <Badge variant={stateToBadgeVariant(invoice.stateBilling)}>{invoice.stateBilling}</Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <div className="flex justify-end">
             <Button
               variant="outline"
-              onClick={() => setFilters({ state: "Todas", client: "", number: "" })}
-              className="h-10"
+              disabled={page.endReached}
+              onClick={() => setCursor(page.nextCursor)}
             >
-              Limpiar
+              Cargar más
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <DataState
-        isLoading={isLoading}
-        error={error}
-        isEmpty={invoices.length === 0}
-        emptyTitle="No se encontraron facturas"
-        emptyDescription="Prueba ajustando los filtros de búsqueda."
-      >
-        <DataTableShell headers={["Número", "Cliente", "Fecha", "Vencimiento", "Total", "Saldo", "Estado"]}>
-          {invoices.map((invoice) => (
-            <DataTableRow key={invoice.billingNumber}>
-              <DataTableCell className="font-mono text-sm font-medium">
-                <Link className="text-primary hover:underline" to={invoiceDetailRoute(invoice.billingNumber)}>
-                  {invoice.billingNumber}
-                </Link>
-              </DataTableCell>
-              <DataTableCell className="max-w-xs truncate">{invoice.clientName}</DataTableCell>
-              <DataTableCell>{toFormattedDate(invoice.loadDate)}</DataTableCell>
-              <DataTableCell>{toFormattedDate(invoice.payDate)}</DataTableCell>
-              <DataTableCell className="text-right font-medium">{toPrint(invoice.total)}</DataTableCell>
-              <DataTableCell className="text-right text-muted-foreground font-medium">{toPrint(invoice.rest)}</DataTableCell>
-              <DataTableCell className="text-center">
-                <StatusBadge status={invoice.stateBilling || "Pendiente"} />
-              </DataTableCell>
-            </DataTableRow>
-          ))}
-        </DataTableShell>
-
-        {hasNextPage && (
-          <div className="mt-4 flex justify-center">
-            <Button
-              variant="outline"
-              onClick={() => fetchNextPage()}
-              disabled={isFetchingNextPage}
-              className="w-full max-w-xs"
-            >
-              {isFetchingNextPage ? (
-                <>
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                  Cargando más...
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="mr-2 h-4 w-4" />
-                  Cargar más facturas
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-      </DataState>
-    </PageShell>
+        </>
+      )}
+    </div>
   );
 }

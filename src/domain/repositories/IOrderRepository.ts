@@ -1,9 +1,8 @@
-import type { BuyOrderModel, OrderModel } from "../entities/order";
+import type { OrderModel } from "@/domain/entities/order";
 
 export interface IOrderRepository {
-  getOrders(uid: string, factoryFilter?: string): Promise<OrderModel[]>;
-  getBuyOrders(uid: string, clientId: string): Promise<BuyOrderModel[]>;
-  getBuyOrder(uid: string, clientId: string, orderId: string): Promise<BuyOrderModel | null>;
-  createBuyOrder(uid: string, clientId: string, order: BuyOrderModel): Promise<string>;
-  getFactoryNames(uid: string): Promise<string[]>;
+  getOrders(uid: string): Promise<OrderModel[]>;
+  createOrder(uid: string, order: OrderModel): Promise<void>;
+  updateOrder(uid: string, orderNumber: string, data: Partial<OrderModel>): Promise<void>;
+  deleteOrder(uid: string, orderNumber: string): Promise<void>;
 }

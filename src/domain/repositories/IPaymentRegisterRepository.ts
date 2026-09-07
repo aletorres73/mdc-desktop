@@ -1,11 +1,9 @@
-import type { MovementStatus, PaymentRegisterModel } from "../entities/paymentRegister";
-
-export interface PaymentRegisterFilters { clientId?: string; branch?: string; }
+import type { PaymentRegisterModel } from "@/domain/entities/paymentRegister";
 
 export interface IPaymentRegisterRepository {
-  getAll(uid: string, filters?: PaymentRegisterFilters): Promise<PaymentRegisterModel[]>;
-  getLastId(uid: string): Promise<number>;
-  save(uid: string, payment: PaymentRegisterModel): Promise<void>;
-  updateStatus(uid: string, paymentId: number, status: MovementStatus, date: number): Promise<void>;
-  delete(uid: string, paymentId: number): Promise<void>;
+  getMovements(uid: string, filters?: { clientId?: string; branch?: string }): Promise<PaymentRegisterModel[]>;
+  createMovement(uid: string, movement: PaymentRegisterModel): Promise<void>;
+  updateMovement(uid: string, id: number, data: Partial<PaymentRegisterModel>): Promise<void>;
+  deleteMovement(uid: string, id: number): Promise<void>;
+  getNextId(uid: string): Promise<number>;
 }

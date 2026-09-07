@@ -1,51 +1,34 @@
-import type { BuyOrderModel } from "../entities/order";
-import type { BillingModel } from "../entities/invoice";
-import type { IInvoiceRepository } from "../repositories/IInvoiceRepository";
-import type { PaymentCondition } from "../entities/factory";
-import type { IFactoryRepository } from "../repositories/IFactoryRepository";
+import type { IInvoiceRepository } from "@/domain/repositories/IInvoiceRepository";
+import type { IBuyOrderRepository } from "@/domain/repositories/IBuyOrderRepository";
+import type { IFactoryRepository } from "@/domain/repositories/IFactoryRepository";
 import { buyOrderToBilling, validateBuyOrderForBilling } from "@/data/mappers/invoiceFromOrderMapper";
-import { recalculateBilling } from "../logic/recalculate";
+import { recalculateBilling } from "@/domain/logic/recalculate";
 
-/**
- * Caso de uso: Crear una factura a partir de un pedido de compra
- * 
- * Responsabilidades:
- * 1. Validar que el pedido tenga datos completos
- * 2. Convertir el pedido a factura
- * 3. Aplicar condición de pago y calcular vencimiento
- * 4. Guardar la factura
- * 5. Actualizar estado del pedido (opcional)
- */
 export class CreateInvoiceFromOrderUseCase {
   constructor(
     private invoiceRepo: IInvoiceRepository,
-    private factoryRepo: IFactoryRepository
+    private buyOrderRepo: IBuyOrderRepository,
+    private factoryRepo: IFactoryRepository,
   ) {}
 
-  async execute(uid: string, buyOrder: BuyOrderModel): Promise<BillingModel> {
-    // 1. Validar datos del pedido
-    const validationError = validateBuyOrderForBilling(buyOrder);
-    if (validationError) {
-      throw new Error(`Validación fallida: ${validationError}`);
+  async execute(uid: string, clientId: string, orderId: string, billingNumber: string): Promise<string> {
+    const normalizedNumber = billingNumber.trim();
+    if (!normalizedNumber) throw new Error("Ingresá un número de factura");
+
+    const order = await this.buyOrderRepo.getBuyOrder(uid, clientId, orderId);
+    if (!order) throw new Error("Pedido no encontrado");
+
+    const validationError = validateBuyOrderForBilling(order);
+    if (validationError) throw new Error(validationError);
+
+    const duplicate = await this.invoiceRepo.getInvoiceByBillingNumber(uid, normalizedNumber);
+    if (duplicate) {
+      throw new Error("El número de factura ya existe en la base de datos. No se puede pisar un documento existente.");
     }
 
-    // 2. Convertir pedido a factura
-    let billing = buyOrderToBilling(buyOrder);
-
-    // 3. Obtener fábrica y aplicar condición de pago
-    const factory = await this.factoryRepo.getFactoryByName(uid, buyOrder.factory);
-    if (factory && buyOrder.paymentCondition) {
-      const condition = factory.paymentType?.find(
-        (pc: PaymentCondition) => pc.paymentName === buyOrder.paymentCondition
-      );
-      if (condition) {
-        billing = recalculateBilling(billing, condition);
-      }
-    }
-
-    // 4. Guardar factura
-    const savedBilling = await this.invoiceRepo.createInvoice(uid, billing);
-
-    return savedBilling;
+    const billing = buyOrderToBilling(order, normalizedNumber);
+    const factory = (await this.factoryRepo.getFactoryByName(uid, billing.brand)) ?? undefined;
+    const recalculated = recalculateBilling(billing, factory);
+    return this.invoiceRepo.createInvoice(uid, recalculated);
   }
 }

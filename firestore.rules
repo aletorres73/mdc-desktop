@@ -59,6 +59,11 @@ service cloud.firestore {
         allow read: if isOwner(uid) && isSubscriptionActive(uid);
         allow create, update, delete: if isOwner(uid) && isSubscriptionActive(uid);
       }
+
+      // Contadores internos (IDs secuenciales) - solo el propio usuario
+      match /config/{doc} {
+        allow read, write: if isOwner(uid);
+      }
     }
 
     // Configuración global de la app - acceso de lectura para todos

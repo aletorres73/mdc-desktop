@@ -1,7 +1,11 @@
-export interface AppUser {
-  uid: string;
-  email: string;
-  displayName?: string;
+export interface PaymentEntry {
+  date: number;
+  amount: number;
+  status: "PENDIENTE" | "APROBADO" | "RECHAZADO" | string;
+  transactionRef: string;
+  receiptRef: string;
+  paymentInfoId: string;
+  paymentId: number;
 }
 
 export interface UserModel {
@@ -14,16 +18,6 @@ export interface UserModel {
   paymentHistory: PaymentEntry[];
 }
 
-export interface PaymentEntry {
-  date: number;
-  amount: number;
-  status: string;
-  transactionRef: string;
-  receiptRef: string;
-  paymentInfoId: string;
-  paymentId: number;
-}
-
 export interface PaymentInfo {
   id: string;
   alias: string;
@@ -32,11 +26,8 @@ export interface PaymentInfo {
   amount: number;
 }
 
-export interface RemoteInitConfig {
-  apkUrl: string;
-  enable: boolean;
-  minSupported: string;
-  releaseNotes: string;
-  versionCode: number;
-  versionName: string;
+export interface AppUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
 }
