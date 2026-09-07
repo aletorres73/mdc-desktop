@@ -3,8 +3,25 @@ import type { BillingModel } from "@/domain/entities/billing";
 
 const DEFAULT_CONFIG: CommissionConfig = { deductIVA: true, ivaRate: 0.21 };
 
+export function resolveCommissionRate(factory: FactoryModel, branch?: string): number {
+  if (!factory) return 0;
+
+  const normalizedBranch = branch?.trim();
+  if (normalizedBranch) {
+    const matchingSegment = Object.entries(factory.segmentCommissions ?? {}).find(([segmentName]) => {
+      return segmentName.trim().toLowerCase() === normalizedBranch.toLowerCase();
+    });
+
+    if (matchingSegment) {
+      return matchingSegment[1];
+    }
+  }
+
+  return factory.defaultCommission ?? 0;
+}
+
 /**
- * Calcula comisión de una factura: prioriza tasa por segmento (marca) sobre default de fábrica,
+ * Calcula comisión de una factura: prioriza la tasa por segmento sobre la global de fábrica,
  * y deduce IVA de la base si el tipo de documento es "Factura".
  */
 export function calculateCommission(
@@ -16,7 +33,7 @@ export function calculateCommission(
   const factory = factoryMap.get(billing.brand);
   if (!factory) return 0;
 
-  const rate = factory.segmentCommissions[billing.branch] ?? factory.defaultCommission;
+  const rate = resolveCommissionRate(factory, billing.branch);
   const typeName = billing.type?.toLowerCase() ?? "";
 
   let base = billing.total;

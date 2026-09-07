@@ -1,17 +1,24 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import {
-  useInvoice,
+  useInvoiceDetail,
   useDeleteInvoice,
   useAddInvoiceComment,
   useApplyInvoicePayment,
+  useChangePaymentCondition,
   useDeleteInvoicePayment,
   useReconcileInvoicePayment,
 } from "@/presentation/hooks/useInvoices";
 import { usePaymentRegister } from "@/presentation/hooks/usePaymentRegister";
+import { useFactory } from "@/presentation/hooks/useFactories";
+import { InvoiceHeader } from "@/presentation/components/invoices/InvoiceHeader";
+import { InvoiceDates } from "@/presentation/components/invoices/InvoiceDates";
+import { InvoiceTotals } from "@/presentation/components/invoices/InvoiceTotals";
+import { InvoiceDocuments } from "@/presentation/components/invoices/InvoiceDocuments";
+import { PaymentCondition } from "@/presentation/components/invoices/PaymentCondition";
 import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
-import { Badge, stateToBadgeVariant } from "@/presentation/components/ui/badge";
+import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { Input } from "@/presentation/components/ui/input";
 import { Textarea } from "@/presentation/components/ui/textarea";
@@ -19,10 +26,12 @@ import { Select } from "@/presentation/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/presentation/components/ui/dialog";
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
+import { ErrorState } from "@/presentation/components/shared/ErrorState";
+import { EmptyState } from "@/presentation/components/shared/EmptyState";
 import { formatMoney, formatDate } from "@/lib/utils";
 import { editInvoicePath, ROUTES } from "@/presentation/routes/routes";
 import type { MovementMethod } from "@/domain/entities/paymentRegister";
-import { ArrowLeft, Pencil, Plus, Trash2, CheckCircle2 } from "lucide-react";
+import { Link2, Pencil, Plus, Receipt, Trash2, CheckCircle2 } from "lucide-react";
 
 const METHOD_OPTIONS: { value: MovementMethod; label: string }[] = [
   { value: "EFECTIVO", label: "Efectivo" },
@@ -35,15 +44,20 @@ const METHOD_OPTIONS: { value: MovementMethod; label: string }[] = [
 
 export default function InvoiceDetail() {
   const { invoiceId } = useParams<{ invoiceId: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { appUser } = useAuth();
-  const { data: invoice, isLoading } = useInvoice(appUser?.uid, invoiceId);
+  const invoiceQuery = useInvoiceDetail(appUser?.uid, invoiceId);
+  const invoice = invoiceQuery.data;
 
   const deleteInvoice = useDeleteInvoice(appUser?.uid);
-  const addComment = useAddInvoiceComment(appUser?.uid, invoiceId!);
-  const applyPayment = useApplyInvoicePayment(appUser?.uid, invoiceId!);
-  const deletePayment = useDeleteInvoicePayment(appUser?.uid, invoiceId!);
-  const reconcilePayment = useReconcileInvoicePayment(appUser?.uid, invoiceId!);
+  const addComment = useAddInvoiceComment(appUser?.uid, invoiceId ?? "");
+  const applyPayment = useApplyInvoicePayment(appUser?.uid, invoiceId ?? "");
+  const deletePayment = useDeleteInvoicePayment(appUser?.uid, invoiceId ?? "");
+  const reconcilePayment = useReconcileInvoicePayment(appUser?.uid, invoiceId ?? "");
+  const changePaymentCondition = useChangePaymentCondition(appUser?.uid, invoiceId ?? "");
+
+  const { data: factory } = useFactory(appUser?.uid, invoice?.brand);
 
   const [comment, setComment] = useState("");
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -52,15 +66,53 @@ export default function InvoiceDetail() {
   const [notes, setNotes] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const backToSearch = typeof location.state?.backToSearch === "string"
+    ? location.state.backToSearch
+    : "";
+  const backToInvoicesPath = `${ROUTES.INVOICES}${backToSearch}`;
+
   const { data: movements } = usePaymentRegister(appUser?.uid, { clientId: invoice?.clientId });
   const invoiceMovements = (movements ?? []).filter((m) => m.documentNumber === invoice?.billingNumber);
 
-  if (isLoading) return <LoadingState className="min-h-[60vh]" />;
-  if (!invoice) return <p className="text-muted-foreground">Factura no encontrada.</p>;
+  if (invoiceQuery.uiState === "loading") {
+    return (
+      <div className="min-h-[60vh]">
+        <LoadingState className="min-h-[60vh]" />
+        <p className="text-center text-sm text-muted-foreground">Cargando detalle de invoice...</p>
+      </div>
+    );
+  }
+
+  if (invoiceQuery.uiState === "error") {
+    const message = invoiceQuery.error instanceof Error
+      ? invoiceQuery.error.message
+      : "Error al cargar el detalle de la factura.";
+
+    return (
+      <div className="space-y-4">
+        <ErrorState message={message} />
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate(backToInvoicesPath)}>Volver</Button>
+          <Button onClick={() => void invoiceQuery.retry()}>Reintentar</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (invoiceQuery.uiState === "notFound" || !invoice) {
+    return (
+      <EmptyState
+        icon={Receipt}
+        title="Factura no encontrada"
+        description="La factura no existe o fue eliminada."
+        action={<Link to={backToInvoicesPath}><Button variant="outline">Volver al listado</Button></Link>}
+      />
+    );
+  }
 
   const handleDelete = async () => {
-    await deleteInvoice.mutateAsync(invoiceId!);
-    navigate(ROUTES.INVOICES);
+    await deleteInvoice.mutateAsync(invoiceId ?? "");
+    navigate(backToInvoicesPath);
   };
 
   const handleAddPayment = async () => {
@@ -72,54 +124,59 @@ export default function InvoiceDetail() {
     setPaymentOpen(false);
   };
 
+  const documentLinks = Array.from(
+    new Set(
+      invoice.comments.flatMap((entry) => {
+        const matches = entry.comments.match(/https?:\/\/\S+/g);
+        return matches ?? [];
+      }),
+    ),
+  );
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <Link to={ROUTES.INVOICES} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-3.5 w-3.5" /> Facturas
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight">Factura #{invoice.billingNumber}</h1>
-          <p className="text-sm text-muted-foreground">{invoice.clientName} · {invoice.brand}</p>
-        </div>
-        <div className="flex gap-2">
-          <Link to={editInvoicePath(invoiceId!)}><Button variant="outline"><Pencil className="h-4 w-4" />Editar</Button></Link>
-          <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
-            <DialogTrigger render={<Button variant="destructive"><Trash2 className="h-4 w-4" />Eliminar</Button>} />
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Eliminar factura</DialogTitle>
-              </DialogHeader>
-              <p className="text-sm text-muted-foreground">Esta acción no se puede deshacer.</p>
-              <DialogFooter>
-                <Button variant="destructive" onClick={handleDelete} loading={deleteInvoice.isPending}>
-                  {deleteInvoice.isPending ? "Eliminando..." : "Confirmar eliminación"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+      <InvoiceHeader
+        invoice={invoice}
+        backToPath={backToInvoicesPath}
+        actions={(
+          <>
+            <Link to={editInvoicePath(invoiceId ?? "")} state={{ backToSearch }}>
+              <Button variant="outline"><Pencil className="h-4 w-4" />Editar</Button>
+            </Link>
+            <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+              <DialogTrigger render={<Button variant="destructive"><Trash2 className="h-4 w-4" />Eliminar</Button>} />
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Eliminar factura</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground">Esta acción no se puede deshacer.</p>
+                <DialogFooter>
+                  <Button variant="destructive" onClick={handleDelete} loading={deleteInvoice.isPending}>
+                    {deleteInvoice.isPending ? "Eliminando..." : "Confirmar eliminación"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
+      />
+
+      <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
+        <InvoiceTotals invoice={invoice} />
+        <div className="flex h-full flex-col gap-4">
+          <InvoiceDates invoice={invoice} />
+          <PaymentCondition
+            value={invoice.paymentCondition}
+            options={factory?.paymentType ?? []}
+            loading={changePaymentCondition.isPending}
+            onChange={async (nextPaymentName) => {
+              await changePaymentCondition.mutateAsync(nextPaymentName);
+            }}
+          />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        {[
-          { label: "Total", value: formatMoney(invoice.total) },
-          { label: "Pagado", value: formatMoney(invoice.payed) },
-          { label: "Saldo", value: formatMoney(invoice.rest) },
-          { label: "Vencimiento", value: formatDate(invoice.payDate) },
-        ].map((item) => (
-          <Card key={item.label} className="border-border/50 shadow-sm">
-            <CardContent className="p-4">
-              <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
-              <p className="text-2xl font-bold tracking-tight tabular-nums">{item.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div>
-        <Badge variant={stateToBadgeVariant(invoice.stateBilling)}>{invoice.stateBilling}</Badge>
-      </div>
+      <InvoiceDocuments documents={documentLinks} />
 
       <Card className="border-border/50 shadow-sm">
         <CardHeader className="flex-row items-center justify-between space-y-0">
@@ -221,7 +278,10 @@ export default function InvoiceDetail() {
 
       <Card className="border-border/50 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-base">Comentarios</CardTitle>
+          <CardTitle className="text-base inline-flex items-center gap-2">
+            <Link2 className="h-4 w-4" />
+            Comentarios y referencias
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           {invoice.comments.map((c, idx) => (

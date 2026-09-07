@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useClients } from "@/presentation/hooks/useClients";
 import { useFactories } from "@/presentation/hooks/useFactories";
@@ -15,6 +15,7 @@ import { ArrowLeft, Save } from "lucide-react";
 
 export default function EditInvoice() {
   const { invoiceId } = useParams<{ invoiceId: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { appUser } = useAuth();
   const { data: invoice, isLoading } = useInvoice(appUser?.uid, invoiceId);
@@ -30,6 +31,10 @@ export default function EditInvoice() {
   const [deliveryDate, setDeliveryDate] = useState("");
   const [total, setTotal] = useState("");
   const [error, setError] = useState("");
+
+  const backToSearch = typeof location.state?.backToSearch === "string"
+    ? location.state.backToSearch
+    : "";
 
   useEffect(() => {
     if (!invoice) return;
@@ -74,7 +79,7 @@ export default function EditInvoice() {
         deliveryDate: deliveryDate ? new Date(deliveryDate).getTime() : 0,
         expectedDiscount: discount, toPay: numericTotal * (1 - discount / 100),
       });
-      navigate(invoiceDetailPath(invoiceId));
+      navigate(invoiceDetailPath(invoiceId), { state: { backToSearch } });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "No se pudo actualizar la factura.");
     }
@@ -84,7 +89,7 @@ export default function EditInvoice() {
     <div className="flex w-full max-w-[1600px] flex-col gap-6 px-2 py-2 sm:px-3 lg:px-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
-          <Link to={invoiceDetailPath(invoiceId)} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <Link to={invoiceDetailPath(invoiceId)} state={{ backToSearch }} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-3.5 w-3.5" />
             Factura
           </Link>

@@ -7,12 +7,13 @@ import {
   limit,
   startAfter,
 } from "@/data/datasources/firestore";
-import { collection, getDocs, query as fsQuery, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, query as fsQuery, doc, getDoc, type QueryConstraint } from "firebase/firestore";
 import { db } from "@/data/datasources/config";
 import { toBillingDomain, toBillingRemote } from "@/data/mappers/billingMapper";
 import type { RemoteResultBillingModel } from "@/data/remote/remoteBilling";
 import type { IInvoiceRepository, InvoiceFilters } from "@/domain/repositories/IInvoiceRepository";
 import type { BillingModel, InvoicePage } from "@/domain/entities/billing";
+import { matchesInvoiceSearch, normalizeInvoiceSearch } from "@/domain/logic/invoiceList";
 
 export class FirestoreInvoiceRepository implements IInvoiceRepository {
   private path(uid: string) {
@@ -25,39 +26,57 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     pageSize: number,
     cursor?: string | null,
   ): Promise<InvoicePage> {
-    const constraints = [];
-    if (filters.clientId) constraints.push(where("Cliente Id", "==", filters.clientId));
-    if (filters.brand) constraints.push(where("Marca", "==", filters.brand));
-    if (filters.state) constraints.push(where("Estado", "==", filters.state));
-    if (filters.clientNamePrefix) {
-      // Búsqueda por prefijo de razón social directamente en Firestore.
-      const prefix = filters.clientNamePrefix;
-      constraints.push(where("Razon Social", ">=", prefix));
-      constraints.push(where("Razon Social", "<", prefix + "\uf8ff"));
-      constraints.push(orderBy("Razon Social"));
-    }
-    // La cuenta corriente filtra por cliente y ordena en memoria para no exigir
-    // un índice compuesto adicional en Firestore.
-    if (!filters.clientId) constraints.push(orderBy("Timestamp", "desc"));
+    const normalizedSearch = normalizeInvoiceSearch(filters.searchText ?? filters.clientNamePrefix ?? "");
+    const needsLocalSearch = normalizedSearch.length > 0;
 
-    if (cursor) {
-      const cursorSnap = await getDoc(doc(db, this.path(uid), cursor));
-      if (cursorSnap.exists()) constraints.push(startAfter(cursorSnap));
-    }
-    constraints.push(limit(pageSize));
+    const baseConstraints: QueryConstraint[] = [];
+    if (filters.clientId) baseConstraints.push(where("Cliente Id", "==", filters.clientId));
+    if (filters.brand) baseConstraints.push(where("Marca", "==", filters.brand));
+    if (filters.state) baseConstraints.push(where("Estado", "==", filters.state));
+    baseConstraints.push(orderBy("Timestamp", "desc"));
 
-    const q = fsQuery(collection(db, this.path(uid)), ...constraints);
-    const snap = await getDocs(q);
-    const items: BillingModel[] = snap.docs.map((d) =>
-      toBillingDomain(d.id, d.data() as RemoteResultBillingModel),
-    );
-    if (filters.clientId) items.sort((a, b) => b.timeStamp - a.timeStamp);
+    const items: BillingModel[] = [];
+    const seenIds = new Set<string>();
+
+    let pageCursor = cursor ?? null;
+    let endReached = false;
+
+    while (items.length < pageSize && !endReached) {
+      const constraints: QueryConstraint[] = [...baseConstraints];
+
+      if (pageCursor) {
+        const cursorSnap = await getDoc(doc(db, this.path(uid), pageCursor));
+        if (cursorSnap.exists()) constraints.push(startAfter(cursorSnap));
+      }
+
+      constraints.push(limit(pageSize));
+
+      const q = fsQuery(collection(db, this.path(uid)), ...constraints);
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        endReached = true;
+        break;
+      }
+
+      for (const invoiceDoc of snap.docs) {
+        const invoice = toBillingDomain(invoiceDoc.id, invoiceDoc.data() as RemoteResultBillingModel);
+        if (needsLocalSearch && !matchesInvoiceSearch(invoice, normalizedSearch)) continue;
+        if (seenIds.has(invoice.id!)) continue;
+        seenIds.add(invoice.id!);
+        items.push(invoice);
+        if (items.length >= pageSize) break;
+      }
+
+      pageCursor = snap.docs[snap.docs.length - 1]?.id ?? null;
+      if (snap.docs.length < pageSize) endReached = true;
+      if (!needsLocalSearch) break;
+    }
 
     return {
       items,
-      nextCursor: snap.docs.length ? snap.docs[snap.docs.length - 1].id : null,
+      nextCursor: endReached ? null : pageCursor,
       quantity: items.length,
-      endReached: snap.docs.length < pageSize,
+      endReached,
     };
   }
 

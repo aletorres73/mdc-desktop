@@ -3,6 +3,7 @@ import type { BillingModel, InvoicePage } from "@/domain/entities/billing";
 export interface InvoiceFilters {
   clientId?: string;
   clientNamePrefix?: string;
+  searchText?: string;
   brand?: string;
   state?: string;
 }

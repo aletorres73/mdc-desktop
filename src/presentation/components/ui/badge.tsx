@@ -31,6 +31,6 @@ export function stateToBadgeVariant(state: string): BadgeProps["variant"] {
   if (normalized.includes("cobrado") || normalized.includes("imputado")) return "success";
   if (normalized.includes("vencido")) return "destructive";
   if (normalized.includes("por vencer")) return "warning";
-  if (normalized.includes("pendiente")) return "info";
+  if (normalized.includes("pendiente")) return "warning";
   return "muted";
 }

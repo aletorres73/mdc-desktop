@@ -3,6 +3,7 @@ import { AuthUseCase } from "@/domain/usecases/AuthUseCase";
 import { ClientUseCase } from "@/domain/usecases/ClientUseCase";
 import { recalculateBilling } from "@/domain/logic/recalculate";
 import { calculateCommission } from "@/domain/logic/commissionCalculator";
+import { summarizeInvoice } from "@/domain/logic/invoiceSummary";
 
 describe("ClientUseCase", () => {
   it("accepts a custom client id instead of forcing the suggested one", async () => {
@@ -77,7 +78,44 @@ describe("Invoice business rules", () => {
       timeStamp: 0,
     };
 
-    expect(calculateCommission(billing, factories)).toBeCloseTo(826.446280991735, 5);
+    expect(calculateCommission(billing, factories)).toBeCloseTo(66.11570247933885, 5);
+  });
+
+  it("falls back to the factory default commission when the branch has no segment override", () => {
+    const factories = [
+      {
+        name: "Fábrica A",
+        branchList: ["Premium"],
+        paymentType: [{ paymentName: "Contado", discount: 0, month: 0, expiration: 15, date: 0, quantity: 1 }],
+        defaultCommission: 0.05,
+        segmentCommissions: { Gold: 0.08 },
+      },
+    ];
+
+    const billing = {
+      billingNumber: "1002",
+      orderId: "order-2",
+      type: "Factura",
+      total: 1000,
+      loadDate: 0,
+      deliveryDate: 0,
+      payDate: 0,
+      articles: [],
+      paymentCondition: "Contado",
+      expectedDiscount: 0,
+      toPay: 1000,
+      payed: 0,
+      rest: 1000,
+      stateBilling: "Pendiente",
+      clientId: "client-2",
+      brand: "Fábrica A",
+      branch: "Premium",
+      comments: [],
+      clientName: "Demo",
+      timeStamp: 0,
+    };
+
+    expect(calculateCommission(billing, factories)).toBeCloseTo(41.3223148, 5);
   });
 
   it("calculates the due date and state based on the payment condition expiration", () => {
@@ -119,5 +157,41 @@ describe("Invoice business rules", () => {
 
     expect(recalculated.payDate).toBe(dueAt);
     expect(recalculated.stateBilling).toBe("Pendiente");
+  });
+
+  it("summarizes the invoice detail with totals and remaining balance", () => {
+    const billing = {
+      billingNumber: "1003",
+      orderId: "order-3",
+      type: "Factura",
+      total: 1000,
+      loadDate: 1700000000000,
+      deliveryDate: 1700003600000,
+      payDate: 1700090000000,
+      articles: [
+        { name: "Camiseta", color: "Azul", value: 600, pairs: 20 },
+        { name: "Pantalón", color: "Negro", value: 400, pairs: 10 },
+      ],
+      paymentCondition: "Contado",
+      expectedDiscount: 50,
+      toPay: 950,
+      payed: 350,
+      rest: 600,
+      stateBilling: "Pendiente",
+      clientId: "client-3",
+      brand: "Fábrica A",
+      branch: "Premium",
+      comments: [],
+      clientName: "Demo",
+      timeStamp: 0,
+    };
+
+    expect(summarizeInvoice(billing as any)).toEqual({
+      total: 1000,
+      paid: 350,
+      remaining: 600,
+      discount: 50,
+      articleCount: 2,
+    });
   });
 });
