@@ -33,7 +33,10 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     if (filters.clientId) baseConstraints.push(where("Cliente Id", "==", filters.clientId));
     if (filters.brand) baseConstraints.push(where("Marca", "==", filters.brand));
     if (filters.state) baseConstraints.push(where("Estado", "==", filters.state));
-    baseConstraints.push(orderBy("Timestamp", "desc"));
+    // where(Cliente Id) + orderBy(Timestamp) requiere índice compuesto inexistente;
+    // para consultas por cliente ordenamos localmente.
+    const sortLocally = Boolean(filters.clientId);
+    if (!sortLocally) baseConstraints.push(orderBy("Timestamp", "desc"));
 
     const items: BillingModel[] = [];
     const seenIds = new Set<string>();
@@ -70,6 +73,10 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
       pageCursor = snap.docs[snap.docs.length - 1]?.id ?? null;
       if (snap.docs.length < pageSize) endReached = true;
       if (!needsLocalSearch) break;
+    }
+
+    if (sortLocally) {
+      items.sort((a, b) => b.timeStamp - a.timeStamp);
     }
 
     return {

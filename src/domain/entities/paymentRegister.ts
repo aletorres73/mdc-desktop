@@ -31,3 +31,14 @@ export const VIRTUAL_MOVEMENT_METHODS: MovementMethod[] = [
   "NOTA_CREDITO",
   "DESCUENTO_EXTRA",
 ];
+
+/** displayName alineado con MovementMethod de la app móvil. */
+export const MOVEMENT_METHOD_LABELS: Record<MovementMethod, string> = {
+  PAGO: "Pago",
+  EFECTIVO: "Efectivo",
+  TRANSFERENCIA: "Transferencia",
+  CHEQUE: "Cheque",
+  PRONTO_PAGO: "Pronto Pago",
+  NOTA_CREDITO: "Nota de Crédito",
+  DESCUENTO_EXTRA: "Descuento Extra",
+};

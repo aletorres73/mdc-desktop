@@ -161,7 +161,7 @@ export function useApplyInvoicePayment(uid: string | undefined, invoiceId: strin
       invoiceUseCase.applyInvoicePayment(uid!, invoiceId, payment),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoice", uid, invoiceId] });
-      queryClient.invalidateQueries({ queryKey: ["paymentRegister", uid] });
+      queryClient.invalidateQueries({ queryKey: ["paymentRegister"], refetchType: "all" });
     },
   });
 }
@@ -172,7 +172,7 @@ export function useDeleteInvoicePayment(uid: string | undefined, invoiceId: stri
     mutationFn: (movementId: number) => invoiceUseCase.deleteInvoicePayment(uid!, invoiceId, movementId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoice", uid, invoiceId] });
-      queryClient.invalidateQueries({ queryKey: ["paymentRegister", uid] });
+      queryClient.invalidateQueries({ queryKey: ["paymentRegister"], refetchType: "all" });
     },
   });
 }
@@ -183,7 +183,7 @@ export function useReconcileInvoicePayment(uid: string | undefined, invoiceId: s
     mutationFn: (movementId: number) => invoiceUseCase.reconcileInvoicePayment(uid!, movementId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoice", uid, invoiceId] });
-      queryClient.invalidateQueries({ queryKey: ["paymentRegister", uid] });
+      queryClient.invalidateQueries({ queryKey: ["paymentRegister"], refetchType: "all" });
     },
   });
 }

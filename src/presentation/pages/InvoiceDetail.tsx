@@ -16,6 +16,7 @@ import { InvoiceHeader } from "@/presentation/components/invoices/InvoiceHeader"
 import { InvoiceDates } from "@/presentation/components/invoices/InvoiceDates";
 import { InvoiceTotals } from "@/presentation/components/invoices/InvoiceTotals";
 import { InvoiceDocuments } from "@/presentation/components/invoices/InvoiceDocuments";
+import { SuggestedDiscountCard } from "@/presentation/components/invoices/SuggestedDiscountCard";
 import { PaymentCondition } from "@/presentation/components/invoices/PaymentCondition";
 import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { Badge } from "@/presentation/components/ui/badge";
@@ -31,6 +32,7 @@ import { EmptyState } from "@/presentation/components/shared/EmptyState";
 import { formatMoney, formatDate } from "@/lib/utils";
 import { editInvoicePath, ROUTES } from "@/presentation/routes/routes";
 import type { MovementMethod } from "@/domain/entities/paymentRegister";
+import { MOVEMENT_METHOD_LABELS } from "@/domain/entities/paymentRegister";
 import { Link2, Pencil, Plus, Receipt, Trash2, CheckCircle2 } from "lucide-react";
 
 const METHOD_OPTIONS: { value: MovementMethod; label: string }[] = [
@@ -133,6 +135,20 @@ export default function InvoiceDetail() {
     ),
   );
 
+  // Descuento sugerido (paridad móvil): se ofrece solo si hay dto esperado
+  // y todavía no existe un movimiento de pronto pago para esta factura.
+  const hasProntoPago = invoiceMovements.some((m) => m.method === "PRONTO_PAGO");
+  const suggestedDiscountAmount = invoice.total * (invoice.expectedDiscount / 100);
+  const showSuggestedDiscount = invoice.expectedDiscount > 0 && !hasProntoPago && suggestedDiscountAmount > 0;
+
+  const handleApplySuggestedDiscount = async () => {
+    await applyPayment.mutateAsync({
+      amount: suggestedDiscountAmount,
+      method: "PRONTO_PAGO",
+      notes: `Aplicado según condición: ${invoice.paymentCondition}`,
+    });
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <InvoiceHeader
@@ -175,6 +191,15 @@ export default function InvoiceDetail() {
           />
         </div>
       </div>
+
+      {showSuggestedDiscount && (
+        <SuggestedDiscountCard
+          amount={suggestedDiscountAmount}
+          paymentCondition={invoice.paymentCondition}
+          loading={applyPayment.isPending}
+          onApply={() => void handleApplySuggestedDiscount()}
+        />
+      )}
 
       <InvoiceDocuments documents={documentLinks} />
 
@@ -235,10 +260,7 @@ export default function InvoiceDetail() {
               {invoiceMovements.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell className="text-muted-foreground">{formatDate(m.date)}</TableCell>
-                  <TableCell>
-                    {m.method}
-                    {m.isVirtual && <Badge variant="info" className="ml-2">Virtual</Badge>}
-                  </TableCell>
+                  <TableCell>{MOVEMENT_METHOD_LABELS[m.method] ?? m.method}</TableCell>
                   <TableCell className="tabular-nums">{formatMoney(m.total)}</TableCell>
                   <TableCell>
                     <Badge variant={m.status === "IMPUTADO" ? "success" : "muted"}>
