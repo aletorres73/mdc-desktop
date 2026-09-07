@@ -12,6 +12,7 @@ import { Select } from "@/presentation/components/ui/select";
 import { Textarea } from "@/presentation/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
 import { clientDetailPath } from "@/presentation/routes/routes";
+import { DateInput } from "@/presentation/components/shared/DateInput";
 import type { ArticleOrderModel } from "@/domain/entities/buyOrder";
 import { Plus, Trash2 } from "lucide-react";
 
@@ -140,7 +141,7 @@ export default function CreateOrder() {
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Fecha de entrega</Label>
-                <Input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
+                <DateInput value={deliveryDate} onChange={setDeliveryDate} />
               </div>
             </CardContent>
           </Card>

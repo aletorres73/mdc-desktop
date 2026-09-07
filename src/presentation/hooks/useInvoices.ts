@@ -186,6 +186,19 @@ export function useDeleteInvoicePayment(uid: string | undefined, invoiceId: stri
   });
 }
 
+export function useUpdateInvoicePayment(uid: string | undefined, invoiceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { movementId: number; amount: number; method: MovementMethod; notes: string; date: number }) =>
+      invoiceUseCase.updateInvoicePayment(uid!, invoiceId, input.movementId, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoice", uid, invoiceId] });
+      queryClient.invalidateQueries({ queryKey: ["paymentRegister"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["invoicesList", uid] });
+    },
+  });
+}
+
 export function useReconcileInvoicePayment(uid: string | undefined, invoiceId: string) {
   const queryClient = useQueryClient();
   return useMutation({

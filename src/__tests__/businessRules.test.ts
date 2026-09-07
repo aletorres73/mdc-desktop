@@ -5,6 +5,7 @@ import { recalculateBilling } from "@/domain/logic/recalculate";
 import { calculateCommission, calculatePaymentCommission } from "@/domain/logic/commissionCalculator";
 import { summarizeInvoice } from "@/domain/logic/invoiceSummary";
 import { CommissionUseCase } from "@/domain/usecases/CommissionUseCase";
+import { InvoiceUseCase } from "@/domain/usecases/InvoiceUseCase";
 
 describe("ClientUseCase", () => {
   it("accepts a custom client id instead of forcing the suggested one", async () => {
@@ -168,6 +169,59 @@ describe("Invoice business rules", () => {
 
     expect(summary).toHaveLength(1);
     expect(summary[0]).toMatchObject({ paymentId: 1, paymentAmount: 100, paymentStatus: "PENDIENTE" });
+  });
+
+  it("edits a payment and recalculates the invoice totals", async () => {
+    const invoice = { ...commissionBilling, toPay: 1000, rest: 700, payed: 300 };
+    const movement = {
+      id: 7,
+      clientId: "client-0",
+      branch: "Fábrica A",
+      date: 1,
+      clientName: "Demo",
+      documentNumber: "1000",
+      type: "Factura",
+      total: 300,
+      notes: "",
+      method: "TRANSFERENCIA" as const,
+      status: "PENDIENTE" as const,
+      reconciliationDate: 0,
+      confirmationTimestamp: 0,
+      isVirtual: false,
+    };
+    const invoiceRepository = {
+      getInvoice: vi.fn().mockResolvedValue(invoice),
+      updateInvoice: vi.fn(),
+    };
+    const paymentRepository = {
+      getMovements: vi.fn().mockResolvedValue([movement]),
+      updateMovement: vi.fn(),
+    };
+    const useCase = new InvoiceUseCase(
+      invoiceRepository as any,
+      { getFactoryByName: vi.fn().mockResolvedValue(commissionFactory) } as any,
+      paymentRepository as any,
+    );
+
+    await useCase.updateInvoicePayment("uid-1", "invoice-1", 7, {
+      amount: 200,
+      method: "TRANSFERENCIA",
+      notes: "corregido",
+      date: 2,
+    });
+
+    expect(paymentRepository.updateMovement).toHaveBeenCalledWith("uid-1", 7, {
+      total: 200,
+      method: "TRANSFERENCIA",
+      notes: "corregido",
+      date: 2,
+      isVirtual: false,
+    });
+    expect(invoiceRepository.updateInvoice).toHaveBeenCalledWith(
+      "uid-1",
+      "invoice-1",
+      expect.objectContaining({ payed: 200, rest: 800 }),
+    );
   });
 
   it("uses the segment commission for the selected brand before the factory default", () => {

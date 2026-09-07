@@ -2,7 +2,7 @@ import type { IInvoiceRepository, InvoiceFilters } from "@/domain/repositories/I
 import type { IFactoryRepository } from "@/domain/repositories/IFactoryRepository";
 import type { IPaymentRegisterRepository } from "@/domain/repositories/IPaymentRegisterRepository";
 import type { BillingModel, BillingComments, InvoicePage } from "@/domain/entities/billing";
-import type { MovementMethod } from "@/domain/entities/paymentRegister";
+import type { MovementMethod, PaymentRegisterModel } from "@/domain/entities/paymentRegister";
 import { recalculateBilling } from "@/domain/logic/recalculate";
 import { VIRTUAL_MOVEMENT_METHODS } from "@/domain/entities/paymentRegister";
 
@@ -137,33 +137,53 @@ export class InvoiceUseCase {
       isVirtual,
     });
 
-    const movements = await this.paymentRepo.getMovements(uid, { clientId: invoice.clientId });
-    const relevant = movements.filter((m) => m.documentNumber === invoice.billingNumber);
-    const payed = relevant.filter((m) => !m.isVirtual).reduce((sum, m) => sum + m.total, 0);
-    const virtualReduction = relevant.filter((m) => m.isVirtual).reduce((sum, m) => sum + m.total, 0);
+    await this.recalculateInvoiceFromMovements(uid, invoiceId, invoice);
+  }
 
-    const factory = (await this.factoryRepo.getFactoryByName(uid, invoice.brand)) ?? undefined;
-    const recalculated = recalculateBilling(
-      { ...invoice, payed, toPay: invoice.total - virtualReduction },
-      factory,
-    );
-    await this.invoiceRepo.updateInvoice(uid, invoiceId, recalculated);
+  async updateInvoicePayment(
+    uid: string,
+    invoiceId: string,
+    movementId: number,
+    payment: { amount: number; method: MovementMethod; notes: string; date: number },
+  ): Promise<void> {
+    const invoice = await this.invoiceRepo.getInvoice(uid, invoiceId);
+    if (!invoice) throw new Error("Invoice not found");
+
+    const movements = await this.paymentRepo.getMovements(uid, { clientId: invoice.clientId });
+    const current = movements.find((movement) => movement.id === movementId && movement.documentNumber === invoice.billingNumber);
+    if (!current) throw new Error("Pago no encontrado");
+
+    const isVirtual = VIRTUAL_MOVEMENT_METHODS.includes(payment.method);
+    if (!Number.isFinite(payment.amount) || payment.amount <= 0) {
+      throw new Error("El monto debe ser mayor a cero");
+    }
+    if (!Number.isFinite(payment.date) || payment.date > Date.now()) {
+      throw new Error("La fecha de pago no puede ser futura");
+    }
+
+    const currentIsVirtual = current.isVirtual || VIRTUAL_MOVEMENT_METHODS.includes(current.method);
+    const available = isVirtual
+      ? invoice.toPay + (currentIsVirtual ? current.total : 0)
+      : invoice.rest + (currentIsVirtual ? 0 : current.total);
+    if (payment.amount > available) {
+      throw new Error("El monto supera el saldo pendiente de la factura");
+    }
+
+    await this.paymentRepo.updateMovement(uid, movementId, {
+      total: payment.amount,
+      method: payment.method,
+      notes: payment.notes,
+      date: payment.date,
+      isVirtual,
+    });
+    await this.recalculateInvoiceFromMovements(uid, invoiceId, invoice);
   }
 
   async deleteInvoicePayment(uid: string, invoiceId: string, movementId: number): Promise<void> {
     await this.paymentRepo.deleteMovement(uid, movementId);
     const invoice = await this.invoiceRepo.getInvoice(uid, invoiceId);
     if (!invoice) return;
-    const movements = await this.paymentRepo.getMovements(uid, { clientId: invoice.clientId });
-    const relevant = movements.filter((m) => m.documentNumber === invoice.billingNumber);
-    const payed = relevant.filter((m) => !m.isVirtual).reduce((sum, m) => sum + m.total, 0);
-    const virtualReduction = relevant.filter((m) => m.isVirtual).reduce((sum, m) => sum + m.total, 0);
-    const factory = (await this.factoryRepo.getFactoryByName(uid, invoice.brand)) ?? undefined;
-    await this.invoiceRepo.updateInvoice(
-      uid,
-      invoiceId,
-      recalculateBilling({ ...invoice, payed, toPay: invoice.total - virtualReduction }, factory),
-    );
+    await this.recalculateInvoiceFromMovements(uid, invoiceId, invoice);
   }
 
   async reconcileInvoicePayment(uid: string, movementId: number): Promise<void> {
@@ -171,5 +191,18 @@ export class InvoiceUseCase {
       status: "RECONCILIADO",
       reconciliationDate: Date.now(),
     });
+  }
+
+  private async recalculateInvoiceFromMovements(uid: string, invoiceId: string, invoice: BillingModel): Promise<void> {
+    const movements = await this.paymentRepo.getMovements(uid, { clientId: invoice.clientId });
+    const relevant = movements.filter((movement) => movement.documentNumber === invoice.billingNumber);
+    const payed = relevant.filter((movement) => !movement.isVirtual).reduce((sum, movement) => sum + movement.total, 0);
+    const virtualReduction = relevant.filter((movement) => movement.isVirtual).reduce((sum, movement) => sum + movement.total, 0);
+    const factory = (await this.factoryRepo.getFactoryByName(uid, invoice.brand)) ?? undefined;
+    await this.invoiceRepo.updateInvoice(
+      uid,
+      invoiceId,
+      recalculateBilling({ ...invoice, payed, toPay: invoice.total - virtualReduction }, factory),
+    );
   }
 }

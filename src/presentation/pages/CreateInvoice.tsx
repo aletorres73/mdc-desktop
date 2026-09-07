@@ -10,6 +10,7 @@ import { Input } from "@/presentation/components/ui/input";
 import { Label } from "@/presentation/components/ui/label";
 import { Select } from "@/presentation/components/ui/select";
 import { invoiceDetailPath } from "@/presentation/routes/routes";
+import { DateInput } from "@/presentation/components/shared/DateInput";
 
 export default function CreateInvoice() {
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ export default function CreateInvoice() {
           <div className="space-y-1.5"><Label>Marca / segmento{needsBranch ? "" : " (opcional)"}</Label><Select options={branchOptions} placeholder="Seleccionar segmento" value={branch} onChange={(event) => setBranch(event.target.value)} disabled={!factory || !needsBranch} /></div>
           <div className="space-y-1.5"><Label>Condición de pago</Label><Select options={conditionOptions} placeholder="Sin condición" value={paymentCondition} onChange={(event) => setPaymentCondition(event.target.value)} disabled={!factory} /></div>
           <div className="space-y-1.5"><Label>Tipo de documento</Label><Select options={[{ value: "Factura", label: "Factura" }, { value: "Remito", label: "Remito" }]} value={type} onChange={(event) => setType(event.target.value)} /></div>
-          <div className="space-y-1.5"><Label>Fecha de recepción</Label><Input type="date" value={deliveryDate} onChange={(event) => setDeliveryDate(event.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Fecha de recepción</Label><DateInput value={deliveryDate} onChange={setDeliveryDate} /></div>
           <div className="space-y-1.5"><Label>Total</Label><Input type="number" min="0" step="0.01" value={total} onChange={(event) => setTotal(event.target.value)} /></div>
         </CardContent>
       </Card>

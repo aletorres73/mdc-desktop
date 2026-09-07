@@ -9,6 +9,7 @@ import {
   useChangePaymentCondition,
   useDeleteInvoicePayment,
   useReconcileInvoicePayment,
+  useUpdateInvoicePayment,
 } from "@/presentation/hooks/useInvoices";
 import { usePaymentRegister } from "@/presentation/hooks/usePaymentRegister";
 import { useFactory } from "@/presentation/hooks/useFactories";
@@ -29,9 +30,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { ErrorState } from "@/presentation/components/shared/ErrorState";
 import { EmptyState } from "@/presentation/components/shared/EmptyState";
+import { DateInput } from "@/presentation/components/shared/DateInput";
 import { formatMoney, formatDate } from "@/lib/utils";
 import { editInvoicePath, orderDetailPath, ROUTES } from "@/presentation/routes/routes";
-import type { MovementMethod } from "@/domain/entities/paymentRegister";
+import type { MovementMethod, PaymentRegisterModel } from "@/domain/entities/paymentRegister";
 import { MOVEMENT_METHOD_LABELS } from "@/domain/entities/paymentRegister";
 import { Link2, Pencil, Plus, Receipt, ShoppingCart, Trash2, CheckCircle2 } from "lucide-react";
 
@@ -57,12 +59,14 @@ export default function InvoiceDetail() {
   const applyPayment = useApplyInvoicePayment(appUser?.uid, invoiceId ?? "");
   const deletePayment = useDeleteInvoicePayment(appUser?.uid, invoiceId ?? "");
   const reconcilePayment = useReconcileInvoicePayment(appUser?.uid, invoiceId ?? "");
+  const updatePayment = useUpdateInvoicePayment(appUser?.uid, invoiceId ?? "");
   const changePaymentCondition = useChangePaymentCondition(appUser?.uid, invoiceId ?? "");
 
   const { data: factory } = useFactory(appUser?.uid, invoice?.brand);
 
   const [comment, setComment] = useState("");
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<PaymentRegisterModel | null>(null);
   const [amount, setAmount] = useState("");
   const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [method, setMethod] = useState<MovementMethod>("TRANSFERENCIA");
@@ -134,10 +138,25 @@ export default function InvoiceDetail() {
       return;
     }
     setPaymentValidationError("");
-    await applyPayment.mutateAsync({ amount: value, method, notes, date });
+    if (editingPayment) {
+      await updatePayment.mutateAsync({ movementId: editingPayment.id, amount: value, method, notes, date });
+    } else {
+      await applyPayment.mutateAsync({ amount: value, method, notes, date });
+    }
     setAmount("");
     setNotes("");
+    setEditingPayment(null);
     setPaymentOpen(false);
+  };
+
+  const openPaymentEditor = (payment: PaymentRegisterModel) => {
+    setEditingPayment(payment);
+    setAmount(String(payment.total));
+    setPaymentDate(new Date(payment.date).toISOString().slice(0, 10));
+    setMethod(payment.method);
+    setNotes(payment.notes);
+    setPaymentValidationError("");
+    setPaymentOpen(true);
   };
 
   const documentLinks = Array.from(
@@ -247,10 +266,10 @@ export default function InvoiceDetail() {
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Pagos registrados</CardTitle>
           <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
-            <DialogTrigger render={<Button size="sm" onClick={() => setPaymentValidationError("")}><Plus className="h-4 w-4" />Registrar pago</Button>} />
+            <DialogTrigger render={<Button size="sm" onClick={() => { setEditingPayment(null); setPaymentValidationError(""); }}><Plus className="h-4 w-4" />Registrar pago</Button>} />
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Registrar pago</DialogTitle>
+                <DialogTitle>{editingPayment ? "Editar pago" : "Registrar pago"}</DialogTitle>
               </DialogHeader>
               <div className="flex flex-col gap-3">
                 <div className="space-y-1.5">
@@ -259,7 +278,7 @@ export default function InvoiceDetail() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Fecha</label>
-                  <Input type="date" value={paymentDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setPaymentDate(e.target.value)} />
+                  <DateInput value={paymentDate} onChange={setPaymentDate} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Método</label>
@@ -276,8 +295,8 @@ export default function InvoiceDetail() {
                 {paymentValidationError && <p className="text-sm text-destructive">{paymentValidationError}</p>}
               </div>
               <DialogFooter>
-                <Button onClick={handleAddPayment} loading={applyPayment.isPending}>
-                  {applyPayment.isPending ? "Guardando..." : "Guardar pago"}
+                  <Button onClick={handleAddPayment} loading={applyPayment.isPending || updatePayment.isPending}>
+                  {applyPayment.isPending || updatePayment.isPending ? "Guardando..." : editingPayment ? "Guardar cambios" : "Guardar pago"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -293,8 +312,13 @@ export default function InvoiceDetail() {
           {applyPayment.isError && (
             <ErrorState className="mb-3" message={applyPayment.error instanceof Error ? applyPayment.error.message : "No se pudo registrar el pago."} />
           )}
-          {(deletePayment.isError || reconcilePayment.isError) && (
-            <ErrorState className="mb-3" message="No se pudo actualizar el movimiento de pago." />
+          {(deletePayment.isError || reconcilePayment.isError || updatePayment.isError) && (
+            <ErrorState
+              className="mb-3"
+              message={updatePayment.isError && updatePayment.error instanceof Error
+                ? updatePayment.error.message
+                : "No se pudo actualizar el movimiento de pago."}
+            />
           )}
           <Table>
             <TableHeader>
@@ -325,6 +349,15 @@ export default function InvoiceDetail() {
                     </Badge>
                   </TableCell>
                   <TableCell className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Editar pago"
+                      disabled={updatePayment.isPending || deletePayment.isPending || reconcilePayment.isPending}
+                      onClick={() => openPaymentEditor(m)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     {m.status !== "IMPUTADO" && m.status !== "RECONCILIADO" && (
                       <Button
                         variant="ghost"

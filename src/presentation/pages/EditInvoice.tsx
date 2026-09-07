@@ -10,6 +10,7 @@ import { Input } from "@/presentation/components/ui/input";
 import { Label } from "@/presentation/components/ui/label";
 import { Select } from "@/presentation/components/ui/select";
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
+import { DateInput } from "@/presentation/components/shared/DateInput";
 import { invoiceDetailPath } from "@/presentation/routes/routes";
 import { ArrowLeft, Save } from "lucide-react";
 
@@ -137,7 +138,7 @@ export default function EditInvoice() {
             </div>
             <div className="space-y-1.5">
               <Label>Fecha de recepción</Label>
-              <Input type="date" value={deliveryDate} onChange={(event) => setDeliveryDate(event.target.value)} />
+              <DateInput value={deliveryDate} onChange={setDeliveryDate} />
             </div>
             <div className="space-y-1.5">
               <Label>Total</Label>
