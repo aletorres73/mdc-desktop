@@ -54,7 +54,7 @@ export interface RemoteResultBillingModel {
   Articulos: unknown[];
   "Condicion de pago": string;
   Dto: number;
-  "A cobrar": number;
+  "A cobrar": string | number;
   Pagado: string;
   Saldo: string;
   Estado: string;

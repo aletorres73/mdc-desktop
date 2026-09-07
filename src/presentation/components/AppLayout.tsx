@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { useLayoutEffect, useRef } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useIsMutating } from "@tanstack/react-query";
 import {
   LayoutDashboard,
@@ -28,6 +29,21 @@ const NAV_ITEMS = [
 export function AppLayout() {
   const { userProfile, signOut } = useAuth();
   const pendingMutations = useIsMutating();
+  const location = useLocation();
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  useLayoutEffect(() => {
+    const scrollKey = `mdc-scroll:${location.key}`;
+    const savedPosition = sessionStorage.getItem(scrollKey);
+    const frame = requestAnimationFrame(() => {
+      if (mainRef.current) mainRef.current.scrollTop = savedPosition ? Number(savedPosition) : 0;
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      if (mainRef.current) sessionStorage.setItem(scrollKey, String(mainRef.current.scrollTop));
+    };
+  }, [location.key]);
 
   return (
     <div className="flex min-h-screen w-full bg-muted/30">
@@ -85,7 +101,7 @@ export function AppLayout() {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto p-6">
+      <main ref={mainRef} className="flex-1 overflow-y-auto p-6">
         <Outlet />
       </main>
     </div>

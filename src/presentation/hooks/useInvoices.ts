@@ -110,7 +110,10 @@ export function useCreateInvoice(uid: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (billing: Parameters<typeof invoiceUseCase.createInvoice>[1]) => invoiceUseCase.createInvoice(uid!, billing),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices", uid] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["invoices", uid] });
+      void queryClient.invalidateQueries({ queryKey: ["invoicesList", uid] });
+    },
   });
 }
 
@@ -118,7 +121,10 @@ export function useDeleteInvoice(uid: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (invoiceId: string) => invoiceUseCase.deleteInvoice(uid!, invoiceId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["invoices", uid] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["invoices", uid] });
+      void queryClient.invalidateQueries({ queryKey: ["invoicesList", uid] });
+    },
   });
 }
 
@@ -130,6 +136,7 @@ export function useUpdateInvoice(uid: string | undefined, invoiceId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["invoice", uid, invoiceId] });
       void queryClient.invalidateQueries({ queryKey: ["invoices", uid] });
+      void queryClient.invalidateQueries({ queryKey: ["invoicesList", uid] });
     },
   });
 }
@@ -157,11 +164,12 @@ export function useChangePaymentCondition(uid: string | undefined, invoiceId: st
 export function useApplyInvoicePayment(uid: string | undefined, invoiceId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payment: { amount: number; method: MovementMethod; notes: string }) =>
+    mutationFn: (payment: { amount: number; method: MovementMethod; notes: string; date: number }) =>
       invoiceUseCase.applyInvoicePayment(uid!, invoiceId, payment),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoice", uid, invoiceId] });
       queryClient.invalidateQueries({ queryKey: ["paymentRegister"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["invoicesList", uid] });
     },
   });
 }
@@ -173,6 +181,7 @@ export function useDeleteInvoicePayment(uid: string | undefined, invoiceId: stri
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoice", uid, invoiceId] });
       queryClient.invalidateQueries({ queryKey: ["paymentRegister"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["invoicesList", uid] });
     },
   });
 }
@@ -184,6 +193,7 @@ export function useReconcileInvoicePayment(uid: string | undefined, invoiceId: s
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["invoice", uid, invoiceId] });
       queryClient.invalidateQueries({ queryKey: ["paymentRegister"], refetchType: "all" });
+      queryClient.invalidateQueries({ queryKey: ["invoicesList", uid] });
     },
   });
 }

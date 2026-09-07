@@ -33,18 +33,24 @@ export default function Commissions() {
             <TableRow>
               <TableHead>Factura</TableHead>
               <TableHead>Cliente</TableHead>
-              <TableHead>Fábrica</TableHead>
-              <TableHead>Total</TableHead>
+              <TableHead>Fábrica / segmento</TableHead>
+              <TableHead>Pago</TableHead>
+              <TableHead>Estado fábrica</TableHead>
               <TableHead>Comisión</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {summary.map((row) => (
-              <TableRow key={row.billingNumber}>
+              <TableRow key={row.paymentId}>
                 <TableCell>{row.billingNumber}</TableCell>
                 <TableCell className="max-w-[180px] truncate">{row.clientName}</TableCell>
-                <TableCell>{row.brand}</TableCell>
-                <TableCell className="tabular-nums">{formatMoney(row.total)}</TableCell>
+                <TableCell>{row.brand}{row.segment ? ` / ${row.segment}` : ""}</TableCell>
+                <TableCell className="tabular-nums">{formatMoney(row.paymentAmount)}</TableCell>
+                <TableCell>
+                  <span className={row.paymentStatus === "PENDIENTE" ? "text-amber-600" : "text-emerald-600"}>
+                    {row.paymentStatus === "PENDIENTE" ? "Pendiente de imputación" : "Imputado"}
+                  </span>
+                </TableCell>
                 <TableCell className="tabular-nums font-medium text-emerald-600">{formatMoney(row.commission)}</TableCell>
               </TableRow>
             ))}

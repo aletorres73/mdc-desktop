@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useInvoicesList } from "@/presentation/hooks/useInvoices";
@@ -31,6 +32,7 @@ function parseStateFilter(value: string | null): InvoiceStateFilter {
 export default function Invoices() {
   const { appUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [refreshKey, setRefreshKey] = useState(0);
@@ -80,7 +82,8 @@ export default function Invoices() {
   };
 
   const handleRefresh = () => {
-    setFilterParams("Todas", "");
+    void queryClient.invalidateQueries({ queryKey: ["invoicesList", appUser?.uid] });
+    void queryClient.invalidateQueries({ queryKey: ["invoice", appUser?.uid] });
     setRefreshKey((value) => value + 1);
   };
 

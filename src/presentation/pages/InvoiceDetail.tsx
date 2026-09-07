@@ -30,10 +30,10 @@ import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { ErrorState } from "@/presentation/components/shared/ErrorState";
 import { EmptyState } from "@/presentation/components/shared/EmptyState";
 import { formatMoney, formatDate } from "@/lib/utils";
-import { editInvoicePath, ROUTES } from "@/presentation/routes/routes";
+import { editInvoicePath, orderDetailPath, ROUTES } from "@/presentation/routes/routes";
 import type { MovementMethod } from "@/domain/entities/paymentRegister";
 import { MOVEMENT_METHOD_LABELS } from "@/domain/entities/paymentRegister";
-import { Link2, Pencil, Plus, Receipt, Trash2, CheckCircle2 } from "lucide-react";
+import { Link2, Pencil, Plus, Receipt, ShoppingCart, Trash2, CheckCircle2 } from "lucide-react";
 
 const METHOD_OPTIONS: { value: MovementMethod; label: string }[] = [
   { value: "EFECTIVO", label: "Efectivo" },
@@ -64,16 +64,21 @@ export default function InvoiceDetail() {
   const [comment, setComment] = useState("");
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [amount, setAmount] = useState("");
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [method, setMethod] = useState<MovementMethod>("TRANSFERENCIA");
   const [notes, setNotes] = useState("");
+  const [paymentValidationError, setPaymentValidationError] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const backToSearch = typeof location.state?.backToSearch === "string"
     ? location.state.backToSearch
     : "";
-  const backToInvoicesPath = `${ROUTES.INVOICES}${backToSearch}`;
+  const backToPath = typeof location.state?.backToPath === "string"
+    ? location.state.backToPath
+    : `${ROUTES.INVOICES}${backToSearch}`;
 
-  const { data: movements } = usePaymentRegister(appUser?.uid, { clientId: invoice?.clientId });
+  const paymentQuery = usePaymentRegister(appUser?.uid, { clientId: invoice?.clientId });
+  const { data: movements } = paymentQuery;
   const invoiceMovements = (movements ?? []).filter((m) => m.documentNumber === invoice?.billingNumber);
 
   if (invoiceQuery.uiState === "loading") {
@@ -94,7 +99,7 @@ export default function InvoiceDetail() {
       <div className="space-y-4">
         <ErrorState message={message} />
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate(backToInvoicesPath)}>Volver</Button>
+          <Button variant="outline" onClick={() => navigate(backToPath)}>Volver</Button>
           <Button onClick={() => void invoiceQuery.retry()}>Reintentar</Button>
         </div>
       </div>
@@ -107,20 +112,29 @@ export default function InvoiceDetail() {
         icon={Receipt}
         title="Factura no encontrada"
         description="La factura no existe o fue eliminada."
-        action={<Link to={backToInvoicesPath}><Button variant="outline">Volver al listado</Button></Link>}
+        action={<Link to={backToPath}><Button variant="outline">Volver</Button></Link>}
       />
     );
   }
 
   const handleDelete = async () => {
     await deleteInvoice.mutateAsync(invoiceId ?? "");
-    navigate(backToInvoicesPath);
+    navigate(backToPath);
   };
 
   const handleAddPayment = async () => {
     const value = parseFloat(amount);
-    if (!value) return;
-    await applyPayment.mutateAsync({ amount: value, method, notes });
+    const date = new Date(`${paymentDate}T00:00:00`).getTime();
+    if (!Number.isFinite(value) || value <= 0) {
+      setPaymentValidationError("El monto debe ser mayor a cero.");
+      return;
+    }
+    if (!Number.isFinite(date) || date > Date.now()) {
+      setPaymentValidationError("La fecha de pago no puede ser futura.");
+      return;
+    }
+    setPaymentValidationError("");
+    await applyPayment.mutateAsync({ amount: value, method, notes, date });
     setAmount("");
     setNotes("");
     setPaymentOpen(false);
@@ -134,6 +148,7 @@ export default function InvoiceDetail() {
       }),
     ),
   );
+  const relatedOrderId = invoice.orderId.trim();
 
   // Descuento sugerido (paridad móvil): se ofrece solo si hay dto esperado
   // y todavía no existe un movimiento de pronto pago para esta factura.
@@ -146,6 +161,7 @@ export default function InvoiceDetail() {
       amount: suggestedDiscountAmount,
       method: "PRONTO_PAGO",
       notes: `Aplicado según condición: ${invoice.paymentCondition}`,
+      date: Date.now(),
     });
   };
 
@@ -153,10 +169,10 @@ export default function InvoiceDetail() {
     <div className="flex flex-col gap-6">
       <InvoiceHeader
         invoice={invoice}
-        backToPath={backToInvoicesPath}
+        backToPath={backToPath}
         actions={(
           <>
-            <Link to={editInvoicePath(invoiceId ?? "")} state={{ backToSearch }}>
+            <Link to={editInvoicePath(invoiceId ?? "")} state={{ backToSearch, backToPath }}>
               <Button variant="outline"><Pencil className="h-4 w-4" />Editar</Button>
             </Link>
             <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
@@ -177,6 +193,27 @@ export default function InvoiceDetail() {
         )}
       />
 
+      <Card className="border-border/50 shadow-sm">
+        <CardContent className="flex items-center gap-3 p-4">
+          <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Pedido relacionado
+            </span>
+            {relatedOrderId ? (
+              <Link
+                to={orderDetailPath(invoice.clientId, relatedOrderId)}
+                className="text-sm font-semibold hover:underline"
+              >
+                {relatedOrderId}
+              </Link>
+            ) : (
+              <span className="text-sm text-muted-foreground">Sin pedido relacionado</span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         <InvoiceTotals invoice={invoice} />
         <div className="flex h-full flex-col gap-4">
@@ -189,6 +226,9 @@ export default function InvoiceDetail() {
               await changePaymentCondition.mutateAsync(nextPaymentName);
             }}
           />
+          {changePaymentCondition.isError && (
+            <ErrorState message={changePaymentCondition.error instanceof Error ? changePaymentCondition.error.message : "No se pudo cambiar la condición de pago."} />
+          )}
         </div>
       </div>
 
@@ -207,7 +247,7 @@ export default function InvoiceDetail() {
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Pagos registrados</CardTitle>
           <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
-            <DialogTrigger render={<Button size="sm"><Plus className="h-4 w-4" />Registrar pago</Button>} />
+            <DialogTrigger render={<Button size="sm" onClick={() => setPaymentValidationError("")}><Plus className="h-4 w-4" />Registrar pago</Button>} />
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Registrar pago</DialogTitle>
@@ -216,6 +256,10 @@ export default function InvoiceDetail() {
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Monto</label>
                   <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Fecha</label>
+                  <Input type="date" value={paymentDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setPaymentDate(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium">Método</label>
@@ -229,6 +273,7 @@ export default function InvoiceDetail() {
                   <label className="text-sm font-medium">Notas</label>
                   <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
                 </div>
+                {paymentValidationError && <p className="text-sm text-destructive">{paymentValidationError}</p>}
               </div>
               <DialogFooter>
                 <Button onClick={handleAddPayment} loading={applyPayment.isPending}>
@@ -239,6 +284,18 @@ export default function InvoiceDetail() {
           </Dialog>
         </CardHeader>
         <CardContent>
+          {paymentQuery.isError && (
+            <div className="mb-3 space-y-2">
+              <ErrorState message={paymentQuery.error instanceof Error ? paymentQuery.error.message : "No se pudo cargar el historial de pagos."} />
+              <Button variant="outline" size="sm" onClick={() => void paymentQuery.refetch()}>Reintentar historial</Button>
+            </div>
+          )}
+          {applyPayment.isError && (
+            <ErrorState className="mb-3" message={applyPayment.error instanceof Error ? applyPayment.error.message : "No se pudo registrar el pago."} />
+          )}
+          {(deletePayment.isError || reconcilePayment.isError) && (
+            <ErrorState className="mb-3" message="No se pudo actualizar el movimiento de pago." />
+          )}
           <Table>
             <TableHeader>
               <TableRow>
@@ -263,12 +320,12 @@ export default function InvoiceDetail() {
                   <TableCell>{MOVEMENT_METHOD_LABELS[m.method] ?? m.method}</TableCell>
                   <TableCell className="tabular-nums">{formatMoney(m.total)}</TableCell>
                   <TableCell>
-                    <Badge variant={m.status === "IMPUTADO" ? "success" : "muted"}>
-                      {m.status === "IMPUTADO" ? "Conciliado" : "Pendiente"}
+                    <Badge variant={m.status === "RECONCILIADO" || m.status === "IMPUTADO" ? "success" : "muted"}>
+                      {m.status === "RECONCILIADO" || m.status === "IMPUTADO" ? "Conciliado" : m.status === "COBRADO" ? "Cobrado" : "Pendiente"}
                     </Badge>
                   </TableCell>
                   <TableCell className="flex gap-1">
-                    {m.status !== "IMPUTADO" && (
+                    {m.status !== "IMPUTADO" && m.status !== "RECONCILIADO" && (
                       <Button
                         variant="ghost"
                         size="icon"

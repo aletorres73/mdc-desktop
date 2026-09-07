@@ -32,7 +32,7 @@ export class PaymentRegisterUseCase {
 
   async reconcileMovement(uid: string, id: number): Promise<void> {
     await this.repo.updateMovement(uid, id, {
-      status: "IMPUTADO",
+      status: "RECONCILIADO",
       reconciliationDate: Date.now(),
     });
   }

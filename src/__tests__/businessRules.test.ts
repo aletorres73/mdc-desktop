@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { AuthUseCase } from "@/domain/usecases/AuthUseCase";
 import { ClientUseCase } from "@/domain/usecases/ClientUseCase";
 import { recalculateBilling } from "@/domain/logic/recalculate";
-import { calculateCommission } from "@/domain/logic/commissionCalculator";
+import { calculateCommission, calculatePaymentCommission } from "@/domain/logic/commissionCalculator";
 import { summarizeInvoice } from "@/domain/logic/invoiceSummary";
+import { CommissionUseCase } from "@/domain/usecases/CommissionUseCase";
 
 describe("ClientUseCase", () => {
   it("accepts a custom client id instead of forcing the suggested one", async () => {
@@ -44,6 +45,131 @@ describe("AuthUseCase", () => {
 });
 
 describe("Invoice business rules", () => {
+  const commissionFactory = {
+    name: "Fábrica A",
+    branchList: ["Premium"],
+    paymentType: [],
+    defaultCommission: 0.05,
+    segmentCommissions: { Premium: 0.08 },
+  };
+
+  const commissionBilling = {
+    billingNumber: "1000",
+    orderId: "order-0",
+    type: "Factura",
+    total: 1000,
+    loadDate: 0,
+    deliveryDate: 0,
+    payDate: 0,
+    articles: [],
+    paymentCondition: "",
+    expectedDiscount: 0,
+    toPay: 1000,
+    payed: 0,
+    rest: 1000,
+    stateBilling: "Pendiente",
+    clientId: "client-0",
+    brand: "Fábrica A",
+    branch: "Premium",
+    comments: [],
+    clientName: "Demo",
+    timeStamp: 0,
+  };
+
+  it("calculates commission from a real payment and preserves the segment fallback", () => {
+    const payment = {
+      id: 1,
+      clientId: "client-0",
+      branch: "Fábrica A",
+      date: 0,
+      clientName: "Demo",
+      documentNumber: "1000",
+      type: "Factura",
+      total: 210,
+      notes: "",
+      method: "TRANSFERENCIA" as const,
+      status: "PENDIENTE" as const,
+      reconciliationDate: 0,
+      confirmationTimestamp: 0,
+      isVirtual: false,
+    };
+
+    expect(calculatePaymentCommission(payment, commissionBilling, [commissionFactory])).toBeCloseTo(16, 5);
+  });
+
+  it("does not calculate commission for virtual movements", () => {
+    const payment = {
+      id: 2,
+      clientId: "client-0",
+      branch: "Fábrica A",
+      date: 0,
+      clientName: "Demo",
+      documentNumber: "1000",
+      type: "Factura",
+      total: 210,
+      notes: "",
+      method: "NOTA_CREDITO" as const,
+      status: "RECONCILIADO" as const,
+      reconciliationDate: 0,
+      confirmationTimestamp: 0,
+      isVirtual: true,
+    };
+
+    expect(calculatePaymentCommission(payment, commissionBilling, [commissionFactory])).toBe(0);
+  });
+
+  it("returns one commission row per real payment, including pending and reconciled states", async () => {
+    const invoiceRepository = {
+      getInvoicesPage: vi.fn().mockResolvedValue({ items: [commissionBilling], nextCursor: null, quantity: 1, endReached: true }),
+    };
+    const paymentRepository = {
+      getMovements: vi.fn().mockResolvedValue([
+        {
+          id: 1,
+          clientId: "client-0",
+          branch: "Fábrica A",
+          date: 0,
+          clientName: "Demo",
+          documentNumber: "1000",
+          type: "Factura",
+          total: 100,
+          notes: "",
+          method: "TRANSFERENCIA",
+          status: "PENDIENTE",
+          reconciliationDate: 0,
+          confirmationTimestamp: 0,
+          isVirtual: false,
+        },
+        {
+          id: 2,
+          clientId: "client-0",
+          branch: "Fábrica A",
+          date: 0,
+          clientName: "Demo",
+          documentNumber: "1000",
+          type: "Factura",
+          total: 50,
+          notes: "",
+          method: "NOTA_CREDITO",
+          status: "RECONCILIADO",
+          reconciliationDate: 0,
+          confirmationTimestamp: 0,
+          isVirtual: true,
+        },
+      ]),
+    };
+    const useCase = new CommissionUseCase(
+      { getFactories: vi.fn().mockResolvedValue([commissionFactory]) } as any,
+      invoiceRepository as any,
+      paymentRepository as any,
+    );
+
+    const summary = await useCase.getCommissionSummary("uid-1");
+
+    expect(summary).toHaveLength(1);
+    expect(summary[0]).toMatchObject({ paymentId: 1, paymentAmount: 100, paymentStatus: "PENDIENTE" });
+  });
+
   it("uses the segment commission for the selected brand before the factory default", () => {
     const factories = [
       {

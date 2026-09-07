@@ -1,5 +1,6 @@
 import type { FactoryModel, CommissionConfig } from "@/domain/entities/factory";
 import type { BillingModel } from "@/domain/entities/billing";
+import type { PaymentRegisterModel } from "@/domain/entities/paymentRegister";
 
 const DEFAULT_CONFIG: CommissionConfig = { deductIVA: true, ivaRate: 0.21 };
 
@@ -40,6 +41,29 @@ export function calculateCommission(
   if (config.deductIVA && typeName.includes("factura")) {
     base = base / (1 + config.ivaRate);
   }
+
+  return base * rate;
+}
+
+/** Calcula la comisión de un movimiento real imputado a una factura/remito. */
+export function calculatePaymentCommission(
+  payment: PaymentRegisterModel,
+  billing: BillingModel,
+  factories: FactoryModel[],
+  config: CommissionConfig = DEFAULT_CONFIG,
+): number {
+  if (payment.isVirtual || payment.method === "PRONTO_PAGO" || payment.method === "NOTA_CREDITO" || payment.method === "DESCUENTO_EXTRA") {
+    return 0;
+  }
+
+  const factory = factories.find((candidate) => candidate.name === payment.branch);
+  if (!factory) return 0;
+
+  const rate = resolveCommissionRate(factory, billing.branch);
+  const typeName = billing.type?.toLowerCase() ?? payment.type?.toLowerCase() ?? "";
+  const base = config.deductIVA && typeName.includes("factura")
+    ? payment.total / (1 + config.ivaRate)
+    : payment.total;
 
   return base * rate;
 }

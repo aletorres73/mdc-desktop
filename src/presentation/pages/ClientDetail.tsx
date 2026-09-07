@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useClient, useUpdateClient } from "@/presentation/hooks/useClients";
@@ -21,6 +21,8 @@ import { ArrowLeft, FileText, PackagePlus, Pencil, Plus, Save, ShoppingBag, X } 
 
 export default function ClientDetail() {
   const { clientId } = useParams<{ clientId: string }>();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { appUser } = useAuth();
   const { data: client, isLoading: loadingClient } = useClient(appUser?.uid, clientId);
   const { data: orders, isLoading: loadingOrders } = useBuyOrders(appUser?.uid, clientId);
@@ -33,9 +35,27 @@ export default function ClientDetail() {
   const [editing, setEditing] = useState(false);
   const [clientName, setClientName] = useState("");
   const [error, setError] = useState("");
-  const [brandFilter, setBrandFilter] = useState("");
-  const [branchFilter, setBranchFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
+  const brandFilter = searchParams.get("brand") ?? "";
+  const branchFilter = searchParams.get("branch") ?? "";
+  const typeFilter = searchParams.get("type") ?? "";
+
+  const backToSearch = typeof location.state?.backToSearch === "string" ? location.state.backToSearch : "";
+  const backToClientsPath = `${ROUTES.CLIENTS}${backToSearch}`;
+
+  const updateFilter = (key: string, value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setSearchParams(next, { replace: true });
+  };
+
+  const clearFilters = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("brand");
+    next.delete("branch");
+    next.delete("type");
+    setSearchParams(next, { replace: true });
+  };
 
   if (loadingClient) return <LoadingState className="min-h-[60vh]" />;
   if (!client || !clientId) return <p className="text-muted-foreground">Cliente no encontrado.</p>;
@@ -83,7 +103,7 @@ export default function ClientDetail() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <Link to="/clients" className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <Link to={backToClientsPath} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-3.5 w-3.5" /> Clientes
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">{client.clientName}</h1>
@@ -158,7 +178,7 @@ export default function ClientDetail() {
                     <TableHeader><TableRow><TableHead>Pedido</TableHead><TableHead>Fábrica</TableHead><TableHead>Marca</TableHead><TableHead>Entrega</TableHead></TableRow></TableHeader>
                     <TableBody>{orders.map((order) => (
                       <TableRow key={order.id}>
-                        <TableCell><Link to={orderDetailPath(clientId, order.id)} className="font-medium hover:underline">{order.order}</Link></TableCell>
+                        <TableCell><Link to={orderDetailPath(clientId, order.id)} state={{ backToClient: location.pathname + location.search }} className="font-medium hover:underline">{order.order}</Link></TableCell>
                         <TableCell>{order.factory}</TableCell><TableCell>{order.branch}</TableCell>
                         <TableCell className="text-muted-foreground">{formatDate(order.deliveryDate)}</TableCell>
                       </TableRow>
@@ -189,18 +209,18 @@ export default function ClientDetail() {
                     <div className="mb-4 flex flex-wrap items-end gap-3">
                       <div className="min-w-44 flex-1 space-y-1.5 sm:flex-none">
                         <Label htmlFor="account-brand-filter">Fábrica</Label>
-                        <Select id="account-brand-filter" className="w-full sm:w-44" placeholder="Todas" options={brandOptions} value={brandFilter} onChange={(event) => setBrandFilter(event.target.value)} />
+                        <Select id="account-brand-filter" className="w-full sm:w-44" placeholder="Todas" options={brandOptions} value={brandFilter} onChange={(event) => updateFilter("brand", event.target.value)} />
                       </div>
                       <div className="min-w-44 flex-1 space-y-1.5 sm:flex-none">
                         <Label htmlFor="account-branch-filter">Segmento</Label>
-                        <Select id="account-branch-filter" className="w-full sm:w-44" placeholder="Todos" options={branchOptions} value={branchFilter} onChange={(event) => setBranchFilter(event.target.value)} />
+                        <Select id="account-branch-filter" className="w-full sm:w-44" placeholder="Todos" options={branchOptions} value={branchFilter} onChange={(event) => updateFilter("branch", event.target.value)} />
                       </div>
                       <div className="min-w-44 flex-1 space-y-1.5 sm:flex-none">
                         <Label htmlFor="account-type-filter">Tipo</Label>
-                        <Select id="account-type-filter" className="w-full sm:w-44" placeholder="Todos" options={typeOptions} value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} />
+                        <Select id="account-type-filter" className="w-full sm:w-44" placeholder="Todos" options={typeOptions} value={typeFilter} onChange={(event) => updateFilter("type", event.target.value)} />
                       </div>
                       {(brandFilter || branchFilter || typeFilter) && (
-                        <Button variant="ghost" onClick={() => { setBrandFilter(""); setBranchFilter(""); setTypeFilter(""); }}>Limpiar filtros</Button>
+                        <Button variant="ghost" onClick={clearFilters}>Limpiar filtros</Button>
                       )}
                     </div>
                     {!filteredInvoices.length ? (
@@ -210,7 +230,7 @@ export default function ClientDetail() {
                         <TableHeader><TableRow><TableHead>Factura</TableHead><TableHead>Datos</TableHead><TableHead>Fecha</TableHead><TableHead>Vencimiento</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Saldo</TableHead></TableRow></TableHeader>
                         <TableBody>{filteredInvoices.map((invoice) => (
                           <TableRow key={invoice.id}>
-                            <TableCell><Link to={invoiceDetailPath(invoice.id!)} className="font-medium hover:underline">{invoice.billingNumber}</Link></TableCell>
+                            <TableCell><Link to={invoiceDetailPath(invoice.id!)} state={{ backToPath: location.pathname + location.search }} className="font-medium hover:underline">{invoice.billingNumber}</Link></TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-1.5">
                                 <Badge variant="default">Marca: {invoice.brand}</Badge>

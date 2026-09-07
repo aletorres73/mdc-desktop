@@ -7,7 +7,7 @@ export type MovementMethod =
   | "NOTA_CREDITO"
   | "DESCUENTO_EXTRA";
 
-export type MovementStatus = "PENDIENTE" | "IMPUTADO";
+export type MovementStatus = "PENDIENTE" | "COBRADO" | "RECONCILIADO" | "IMPUTADO";
 
 export interface PaymentRegisterModel {
   id: number;

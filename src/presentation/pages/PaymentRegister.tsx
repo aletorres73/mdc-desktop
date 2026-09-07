@@ -7,6 +7,7 @@ import { Badge } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { EmptyState } from "@/presentation/components/shared/EmptyState";
+import { ErrorState } from "@/presentation/components/shared/ErrorState";
 import { formatMoney, formatDate } from "@/lib/utils";
 import { Wallet, CheckCircle2, Trash2, Search } from "lucide-react";
 
@@ -15,10 +16,11 @@ export default function PaymentRegister() {
   const [clientId, setClientId] = useState("");
   const [branch, setBranch] = useState("");
 
-  const { data: movements, isLoading } = usePaymentRegister(appUser?.uid, {
+  const movementsQuery = usePaymentRegister(appUser?.uid, {
     clientId: clientId || undefined,
     branch: branch || undefined,
   });
+  const { data: movements, isLoading } = movementsQuery;
   const reconcile = useReconcileMovement(appUser?.uid);
   const remove = useDeleteMovement(appUser?.uid);
 
@@ -37,8 +39,17 @@ export default function PaymentRegister() {
         <Input placeholder="Marca..." className="w-48" value={branch} onChange={(e) => setBranch(e.target.value)} />
       </div>
 
+      {(reconcile.isError || remove.isError) && (
+        <ErrorState message="No se pudo actualizar el movimiento. Intentá nuevamente." />
+      )}
+
       {isLoading ? (
         <LoadingState />
+      ) : movementsQuery.isError ? (
+        <div className="space-y-3">
+          <ErrorState message={movementsQuery.error instanceof Error ? movementsQuery.error.message : "No se pudo cargar el registro de pagos."} />
+          <Button variant="outline" onClick={() => void movementsQuery.refetch()}>Reintentar</Button>
+        </div>
       ) : !movements?.length ? (
         <EmptyState icon={Wallet} title="Sin movimientos" description="No hay pagos registrados con estos filtros." />
       ) : (
@@ -68,12 +79,12 @@ export default function PaymentRegister() {
                 </TableCell>
                 <TableCell className="tabular-nums">{formatMoney(m.total)}</TableCell>
                 <TableCell>
-                  <Badge variant={m.status === "IMPUTADO" ? "success" : "muted"}>
-                    {m.status === "IMPUTADO" ? "Conciliado" : "Pendiente"}
+                  <Badge variant={m.status === "RECONCILIADO" || m.status === "IMPUTADO" ? "success" : "muted"}>
+                    {m.status === "RECONCILIADO" || m.status === "IMPUTADO" ? "Conciliado" : m.status === "COBRADO" ? "Cobrado" : "Pendiente"}
                   </Badge>
                 </TableCell>
                 <TableCell className="flex gap-1">
-                  {m.status !== "IMPUTADO" && (
+                  {m.status !== "IMPUTADO" && m.status !== "RECONCILIADO" && (
                     <Button
                       variant="ghost"
                       size="icon"

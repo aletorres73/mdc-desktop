@@ -40,6 +40,6 @@ export const createInvoiceFromOrderUseCase = new CreateInvoiceFromOrderUseCase(
   buyOrderRepository,
   factoryRepository,
 );
-export const commissionUseCase = new CommissionUseCase(factoryRepository, invoiceRepository);
+export const commissionUseCase = new CommissionUseCase(factoryRepository, invoiceRepository, paymentRegisterRepository);
 
 export { userRepository };

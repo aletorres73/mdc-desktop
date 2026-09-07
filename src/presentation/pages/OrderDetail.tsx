@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useBuyOrder } from "@/presentation/hooks/useBuyOrders";
@@ -17,12 +17,16 @@ import { ArrowLeft, Receipt } from "lucide-react";
 
 export default function OrderDetail() {
   const { clientId, orderId } = useParams<{ clientId: string; orderId: string }>();
+  const location = useLocation();
   const { appUser } = useAuth();
   const { data: order, isLoading } = useBuyOrder(appUser?.uid, clientId, orderId);
   const createInvoice = useCreateInvoiceFromOrder(appUser?.uid);
 
   const [billingNumber, setBillingNumber] = useState("");
   const [open, setOpen] = useState(false);
+  const backToClient = typeof location.state?.backToClient === "string"
+    ? location.state.backToClient
+    : clientDetailPath(clientId ?? "");
 
   const normalizedBillingNumber = billingNumber.trim();
   const duplicateInvoiceQuery = useQuery({
@@ -53,7 +57,7 @@ export default function OrderDetail() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <Link to={clientDetailPath(clientId!)} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <Link to={backToClient} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-3.5 w-3.5" /> Cliente
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Pedido {order.order}</h1>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useClients, useCreateClient, useDeleteClient, useSuggestedClientId } from "@/presentation/hooks/useClients";
 import { Input } from "@/presentation/components/ui/input";
@@ -14,7 +14,9 @@ import { Search, UserPlus, Users, Trash2 } from "lucide-react";
 
 export default function Clients() {
   const { appUser } = useAuth();
-  const [search, setSearch] = useState("");
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get("q") ?? "";
   const [newClientName, setNewClientName] = useState("");
   const [newClientId, setNewClientId] = useState("");
   const [open, setOpen] = useState(false);
@@ -23,6 +25,13 @@ export default function Clients() {
   const createClient = useCreateClient(appUser?.uid);
   const deleteClient = useDeleteClient(appUser?.uid);
   const { data: suggestedId } = useSuggestedClientId(appUser?.uid, open);
+
+  const updateSearch = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value.trim()) next.set("q", value);
+    else next.delete("q");
+    setSearchParams(next, { replace: true });
+  };
 
   useEffect(() => {
     if (open && suggestedId) setNewClientId(suggestedId);
@@ -75,7 +84,7 @@ export default function Clients() {
           placeholder="Buscar por razón social..."
           className="pl-9"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => updateSearch(e.target.value)}
         />
       </div>
 
@@ -97,7 +106,11 @@ export default function Clients() {
               <TableRow key={client.clientId}>
                 <TableCell className="text-muted-foreground">{client.clientId}</TableCell>
                 <TableCell>
-                  <Link to={clientDetailPath(client.clientId)} className="font-medium hover:underline">
+                  <Link
+                    to={clientDetailPath(client.clientId)}
+                    state={{ backToSearch: location.search }}
+                    className="font-medium hover:underline"
+                  >
                     {client.clientName}
                   </Link>
                 </TableCell>
