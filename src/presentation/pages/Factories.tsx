@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useFactories, useCreateFactory } from "@/presentation/hooks/useFactories";
 import { Button } from "@/presentation/components/ui/button";
@@ -11,6 +11,7 @@ import { factoryDetailPath } from "@/presentation/routes/routes";
 import { Factory, Plus } from "lucide-react";
 
 export default function Factories() {
+  const location = useLocation();
   const { appUser } = useAuth();
   const { data: factories, isLoading } = useFactories(appUser?.uid);
   const createFactory = useCreateFactory(appUser?.uid);
@@ -64,7 +65,11 @@ export default function Factories() {
             <div key={f.name} className="rounded-lg border border-border/60 bg-card p-4 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <Link to={factoryDetailPath(f.name)} className="text-base font-semibold hover:underline">
+                  <Link
+                    to={factoryDetailPath(f.name)}
+                    state={{ backToPath: location.pathname + location.search }}
+                    className="text-base font-semibold hover:underline"
+                  >
                     {f.name}
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">

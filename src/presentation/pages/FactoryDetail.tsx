@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useFactory, useUpdateFactory, useDeleteFactory } from "@/presentation/hooks/useFactories";
 import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
@@ -17,11 +17,15 @@ const emptyCondition: PaymentCondition = { paymentName: "", discount: 0, month: 
 export default function FactoryDetail() {
   const { factoryName } = useParams<{ factoryName: string }>();
   const decodedName = factoryName ? decodeURIComponent(factoryName) : "";
+  const location = useLocation();
   const navigate = useNavigate();
   const { appUser } = useAuth();
   const { data: factory, isLoading } = useFactory(appUser?.uid, decodedName);
   const updateFactory = useUpdateFactory(appUser?.uid);
   const deleteFactory = useDeleteFactory(appUser?.uid);
+  const backToPath = typeof location.state?.backToPath === "string"
+    ? location.state.backToPath
+    : ROUTES.FACTORIES;
 
   const [segments, setSegments] = useState<string[]>([]);
   const [newSegment, setNewSegment] = useState("");
@@ -84,14 +88,14 @@ export default function FactoryDetail() {
 
   const handleDelete = async () => {
     await deleteFactory.mutateAsync(decodedName);
-    navigate(ROUTES.FACTORIES);
+    navigate(backToPath);
   };
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <Link to={ROUTES.FACTORIES} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <Link to={backToPath} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-3.5 w-3.5" /> Fábricas
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">{decodedName}</h1>

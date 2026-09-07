@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useInvoicesPage } from "@/presentation/hooks/useInvoices";
 import { KpiCard } from "@/presentation/components/shared/KpiCard";
@@ -12,6 +12,7 @@ import { invoiceDetailPath, ROUTES } from "@/presentation/routes/routes";
 import { Wallet, AlertTriangle, Clock, Users, ArrowRight } from "lucide-react";
 
 export default function Home() {
+  const location = useLocation();
   const { appUser, userProfile } = useAuth();
   const { data: page, isLoading } = useInvoicesPage(appUser?.uid, {}, 100);
 
@@ -51,6 +52,7 @@ export default function Home() {
               <Link
                 key={invoice.id}
                 to={invoiceDetailPath(invoice.id!)}
+                state={{ backToPath: location.pathname + location.search }}
                 className="flex items-center justify-between rounded-md px-2 py-2 text-sm hover:bg-muted/40"
               >
                 <div className="min-w-0">

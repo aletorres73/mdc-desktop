@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useInvoicesPage } from "@/presentation/hooks/useInvoices";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
@@ -66,13 +66,32 @@ function getIndicatorColorClass(state: string): string {
   return "bg-slate-400";
 }
 
+// yyyy-MM-dd, local time to avoid timezone shifting the selected day
+function parseDateParam(value: string | null): Date | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDateParam(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function Agenda() {
+  const location = useLocation();
   const { appUser } = useAuth();
   const { data: page, isLoading } = useInvoicesPage(appUser?.uid, {}, 200);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getMonday(new Date()));
-  const [isFilteringUrgent, setIsFilteringUrgent] = useState(false);
+  const initialDate = parseDateParam(searchParams.get("date")) ?? new Date();
+  const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getMonday(initialDate));
+  const [isFilteringUrgent, setIsFilteringUrgent] = useState(searchParams.get("urgent") === "1");
 
   const allBillings = page?.items ?? [];
 
@@ -121,18 +140,28 @@ export default function Agenda() {
   const onDateSelected = (date: Date) => {
     setIsFilteringUrgent(false);
     setSelectedDate(date);
+    const next = new URLSearchParams(searchParams);
+    next.set("date", formatDateParam(date));
+    next.delete("urgent");
+    setSearchParams(next, { replace: true });
   };
 
   const nextWeek = () => {
     const next = addDays(currentWeekStart, 7);
     setCurrentWeekStart(next);
     setSelectedDate(next);
+    const params = new URLSearchParams(searchParams);
+    params.set("date", formatDateParam(next));
+    setSearchParams(params, { replace: true });
   };
 
   const previousWeek = () => {
     const prev = addDays(currentWeekStart, -7);
     setCurrentWeekStart(prev);
     setSelectedDate(prev);
+    const params = new URLSearchParams(searchParams);
+    params.set("date", formatDateParam(prev));
+    setSearchParams(params, { replace: true });
   };
 
   const goToToday = () => {
@@ -140,10 +169,21 @@ export default function Agenda() {
     setCurrentWeekStart(getMonday(today));
     setSelectedDate(today);
     setIsFilteringUrgent(false);
+    const params = new URLSearchParams(searchParams);
+    params.set("date", formatDateParam(today));
+    params.delete("urgent");
+    setSearchParams(params, { replace: true });
   };
 
   const toggleUrgentFilter = () => {
-    setIsFilteringUrgent((prev) => !prev);
+    setIsFilteringUrgent((prev) => {
+      const next = !prev;
+      const params = new URLSearchParams(searchParams);
+      if (next) params.set("urgent", "1");
+      else params.delete("urgent");
+      setSearchParams(params, { replace: true });
+      return next;
+    });
   };
 
   return (
@@ -310,6 +350,7 @@ export default function Agenda() {
                       <div className="flex items-center gap-2">
                         <Link
                           to={invoiceDetailPath(invoice.id!)}
+                          state={{ backToPath: location.pathname + location.search }}
                           className="font-medium hover:underline text-primary"
                         >
                           {invoice.billingNumber}
@@ -331,6 +372,7 @@ export default function Agenda() {
                     <TableCell className="text-right">
                       <Link
                         to={invoiceDetailPath(invoice.id!)}
+                        state={{ backToPath: location.pathname + location.search }}
                         className="inline-flex items-center justify-center rounded-md text-xs font-medium h-8 px-2.5 hover:bg-muted/50 text-foreground transition-colors"
                       >
                         Ver
