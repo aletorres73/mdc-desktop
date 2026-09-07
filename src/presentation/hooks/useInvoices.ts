@@ -89,6 +89,25 @@ export function useInvoice(uid: string | undefined, invoiceId: string | undefine
   });
 }
 
+/** Todas las facturas del usuario (para joins cliente-side, p. ej. segmento de un pago). */
+export function useAllInvoices(uid: string | undefined) {
+  return useQuery({
+    queryKey: ["allInvoices", uid],
+    queryFn: () => invoiceUseCase.getAllInvoices(uid!),
+    enabled: !!uid,
+  });
+}
+
+/** Facturas/remitos asociados a un pedido (se aceptan id y número por datos legacy). */
+export function useOrderInvoices(uid: string | undefined, orderIds: Array<string | null | undefined>) {
+  const ids = [...new Set(orderIds.map((value) => value?.trim()).filter((value): value is string => !!value))];
+  return useQuery({
+    queryKey: ["orderInvoices", uid, ids],
+    queryFn: () => invoiceUseCase.getInvoicesByOrder(uid!, ids),
+    enabled: !!uid && ids.length > 0,
+  });
+}
+
 export function useInvoiceDetail(uid: string | undefined, invoiceId: string | undefined) {
   const query = useInvoice(uid, invoiceId);
   const uiState: InvoiceDetailUiState = useMemo(() => {

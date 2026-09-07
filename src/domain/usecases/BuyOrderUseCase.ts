@@ -8,6 +8,10 @@ export class BuyOrderUseCase {
     return this.buyOrderRepo.getBuyOrdersByClient(uid, clientId);
   }
 
+  getAll(uid: string): Promise<BuyOrderModel[]> {
+    return this.buyOrderRepo.getAllBuyOrders(uid);
+  }
+
   getOrder(uid: string, clientId: string, orderId: string): Promise<BuyOrderModel | null> {
     return this.buyOrderRepo.getBuyOrder(uid, clientId, orderId);
   }

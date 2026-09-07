@@ -21,12 +21,12 @@ export class CreateInvoiceFromOrderUseCase {
     const validationError = validateBuyOrderForBilling(order);
     if (validationError) throw new Error(validationError);
 
+    const billing = buyOrderToBilling(order, normalizedNumber);
     const duplicate = await this.invoiceRepo.getInvoiceByBillingNumber(uid, normalizedNumber);
     if (duplicate) {
       throw new Error("El número de factura ya existe en la base de datos. No se puede pisar un documento existente.");
     }
 
-    const billing = buyOrderToBilling(order, normalizedNumber);
     const factory = (await this.factoryRepo.getFactoryByName(uid, billing.brand)) ?? undefined;
     const recalculated = recalculateBilling(billing, factory);
     return this.invoiceRepo.createInvoice(uid, recalculated);

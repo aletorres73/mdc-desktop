@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useClients } from "@/presentation/hooks/useClients";
 import { useFactories } from "@/presentation/hooks/useFactories";
@@ -9,16 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/compone
 import { Input } from "@/presentation/components/ui/input";
 import { Label } from "@/presentation/components/ui/label";
 import { Select } from "@/presentation/components/ui/select";
-import { invoiceDetailPath } from "@/presentation/routes/routes";
+import { invoiceDetailPath, ROUTES } from "@/presentation/routes/routes";
 import { DateInput } from "@/presentation/components/shared/DateInput";
+import { ArrowLeft } from "lucide-react";
 
 export default function CreateInvoice() {
+  const location = useLocation();
   const navigate = useNavigate();
   const { appUser } = useAuth();
   const { data: clients } = useClients(appUser?.uid);
   const { data: factories } = useFactories(appUser?.uid);
   const createInvoice = useCreateInvoice(appUser?.uid);
-  const [clientId, setClientId] = useState("");
+  const inheritedClientId = typeof location.state?.clientId === "string" ? location.state.clientId : "";
+  const [clientId, setClientId] = useState(inheritedClientId);
   const [factoryName, setFactoryName] = useState("");
   const [branch, setBranch] = useState("");
   const [paymentCondition, setPaymentCondition] = useState("");
@@ -27,6 +30,9 @@ export default function CreateInvoice() {
   const [deliveryDate, setDeliveryDate] = useState("");
   const [total, setTotal] = useState("");
   const [error, setError] = useState("");
+  const backToPath = typeof location.state?.backToPath === "string"
+    ? location.state.backToPath
+    : ROUTES.INVOICES;
 
   const client = clients?.find((item) => item.clientId === clientId);
   const factory = factories?.find((item) => item.name === factoryName);
@@ -71,7 +77,7 @@ export default function CreateInvoice() {
         clientName: client.clientName,
         timeStamp: Date.now(),
       });
-      navigate(invoiceDetailPath(id));
+      navigate(invoiceDetailPath(id), { state: { backToPath } });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "No se pudo guardar la factura.");
     }
@@ -80,6 +86,9 @@ export default function CreateInvoice() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div>
+        <Link to={backToPath} className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-3.5 w-3.5" /> Volver
+        </Link>
         <h1 className="text-2xl font-bold tracking-tight">Nueva factura</h1>
         <p className="text-sm text-muted-foreground">Venta directa sin pedido asociado.</p>
       </div>

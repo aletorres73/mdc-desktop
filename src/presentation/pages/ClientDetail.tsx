@@ -46,6 +46,7 @@ export default function ClientDetail() {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value);
     else next.delete(key);
+    if (key === "brand") next.delete("branch");
     setSearchParams(next, { replace: true });
   };
 
@@ -62,7 +63,12 @@ export default function ClientDetail() {
 
   const invoices = invoicePage?.items ?? [];
   const brandOptions = Array.from(new Set(invoices.map((invoice) => invoice.brand).filter(Boolean))).map((value) => ({ value, label: value }));
-  const branchOptions = Array.from(new Set(invoices.map((invoice) => invoice.branch).filter(Boolean))).map((value) => ({ value, label: value }));
+  const branchOptions = Array.from(new Set(
+    invoices
+      .filter((invoice) => !brandFilter || invoice.brand === brandFilter)
+      .map((invoice) => invoice.branch)
+      .filter(Boolean),
+  )).map((value) => ({ value, label: value }));
   const typeOptions = Array.from(new Set(invoices.map((invoice) => invoice.type).filter(Boolean))).map((value) => ({ value, label: value }));
   const filteredInvoices = invoices.filter((invoice) =>
     (!brandFilter || invoice.brand === brandFilter) &&
@@ -193,7 +199,7 @@ export default function ClientDetail() {
             <Card className="border-border/50 shadow-sm">
               <CardHeader className="flex-row items-center justify-between space-y-0">
                 <div><CardTitle className="text-base">Cuenta corriente</CardTitle><p className="mt-1 text-sm text-muted-foreground">Facturación, pagos y saldo de este cliente.</p></div>
-                <Link to={ROUTES.CREATE_INVOICE} className={cn(buttonVariants({ size: "sm" }))}>
+                <Link to={ROUTES.CREATE_INVOICE} state={{ backToPath: location.pathname + location.search, clientId }} className={cn(buttonVariants({ size: "sm" }))}>
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">Nueva factura sin pedido</span>
                   <span className="sm:hidden">Nueva factura</span>

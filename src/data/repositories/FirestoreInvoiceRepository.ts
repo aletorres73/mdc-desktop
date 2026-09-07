@@ -108,6 +108,22 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     return toBillingDomain(doc.id, doc.data() as RemoteResultBillingModel);
   }
 
+  async getAllInvoices(uid: string): Promise<BillingModel[]> {
+    const snap = await getDocs(fsQuery(collection(db, this.path(uid))));
+    return snap.docs.map((d) => toBillingDomain(d.id, d.data() as RemoteResultBillingModel));
+  }
+
+  async getInvoicesByOrder(uid: string, orderIds: string[]): Promise<BillingModel[]> {
+    const ids = [...new Set(orderIds.map((value) => value.trim()).filter(Boolean))].slice(0, 30);
+    if (!ids.length) return [];
+
+    const q = fsQuery(collection(db, this.path(uid)), where("Orden", "in", ids));
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => toBillingDomain(d.id, d.data() as RemoteResultBillingModel))
+      .sort((a, b) => b.timeStamp - a.timeStamp);
+  }
+
   async createInvoice(uid: string, billing: BillingModel): Promise<string> {
     const documentId = billing.id ?? billing.billingNumber.trim();
     if (!documentId) throw new Error("El número de factura es obligatorio");

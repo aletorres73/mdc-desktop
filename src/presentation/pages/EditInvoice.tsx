@@ -55,31 +55,34 @@ export default function EditInvoice() {
   const client = clients?.find((item) => item.clientId === clientId);
   const factory = factories?.find((item) => item.name === factoryName);
   const condition = factory?.paymentType.find((item) => item.paymentName === paymentCondition);
+  const isOrderInvoice = invoice?.orderId.trim().length > 0;
   const needsBranch = (factory?.branchList.length ?? 0) > 0;
+  const selectedBranch = branch || (isOrderInvoice ? factory?.branchList[0] ?? "" : "");
   const clientOptions = (clients ?? []).map((item) => ({ value: item.clientId, label: `${item.clientName} (${item.clientId})` }));
   const factoryOptions = (factories ?? []).map((item) => ({ value: item.name, label: item.name }));
   const branchOptions = (factory?.branchList ?? []).map((item) => ({ value: item, label: item }));
   const conditionOptions = (factory?.paymentType ?? []).map((item) => ({ value: item.paymentName, label: item.paymentName }));
   const numericTotal = parseFloat(total) || 0;
+  const hasValidTotal = numericTotal > 0;
   const missing: string[] = [];
   if (!client) missing.push("cliente");
   if (!factory) missing.push("fábrica");
   if (!billingNumber.trim()) missing.push("número de factura");
-  if (needsBranch && !branch) missing.push("marca o segmento");
-  if (numericTotal <= 0) missing.push("total mayor a 0");
+  if (needsBranch && !selectedBranch) missing.push("marca o segmento");
+  if (!hasValidTotal) missing.push("total mayor a 0");
   const canSave = missing.length === 0 && !updateInvoice.isPending;
 
   if (isLoading) return <LoadingState className="min-h-[60vh]" />;
   if (!invoice || !invoiceId) return <p className="text-muted-foreground">Factura no encontrada.</p>;
 
   const handleSave = async () => {
-    if (!client || !factory || !billingNumber.trim() || numericTotal <= 0 || (needsBranch && !branch)) return;
+    if (!client || !factory || !billingNumber.trim() || !hasValidTotal || (needsBranch && !selectedBranch)) return;
     setError("");
     try {
       const discount = condition?.discount ?? 0;
       await updateInvoice.mutateAsync({
         billingNumber: billingNumber.trim(), clientId: client.clientId, clientName: client.clientName,
-        brand: factory.name, branch, paymentCondition, type, total: numericTotal,
+        brand: factory.name, branch: selectedBranch, paymentCondition, type, total: numericTotal,
         deliveryDate: deliveryDate ? new Date(deliveryDate).getTime() : 0,
         expectedDiscount: discount, toPay: numericTotal * (1 - discount / 100),
       });
@@ -126,7 +129,7 @@ export default function EditInvoice() {
             </div>
             <div className="space-y-1.5">
               <Label>Marca / segmento{needsBranch ? "" : " (opcional)"}</Label>
-              <Select options={branchOptions} value={branch} disabled={!factory || !needsBranch} onChange={(event) => setBranch(event.target.value)} />
+              <Select options={branchOptions} value={selectedBranch} disabled={!factory || !needsBranch} onChange={(event) => setBranch(event.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>Condición de pago</Label>

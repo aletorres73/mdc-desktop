@@ -14,6 +14,27 @@ export class FirestoreBuyOrderRepository implements IBuyOrderRepository {
     return remote.map(toBuyOrderDomain);
   }
 
+  async getAllBuyOrders(uid: string): Promise<BuyOrderModel[]> {
+    // Las reglas de seguridad suelen bloquear collectionGroup entre usuarios;
+    // si falla, se hace fan-out por cliente (una consulta por cliente).
+    try {
+      const remote = await getCollectionGroup<RemoteResultBuyOrder & { __path?: string }>("buyOrders");
+      return remote
+        .filter((order) => order.__path?.startsWith(`users/${uid}/`))
+        .map(toBuyOrderDomain);
+    } catch {
+      const clients = await getCollection<{ id: string }>(`users/${uid}/clients`);
+      const perClient = await Promise.all(
+        clients.map((client) =>
+          getCollection<RemoteResultBuyOrder>(this.path(uid, client.id)).catch(
+            () => [] as RemoteResultBuyOrder[],
+          ),
+        ),
+      );
+      return perClient.flat().map(toBuyOrderDomain);
+    }
+  }
+
   async getBuyOrder(uid: string, clientId: string, orderId: string): Promise<BuyOrderModel | null> {
     const remote = await getDocument<RemoteResultBuyOrder>(this.path(uid, clientId), orderId);
     return remote ? toBuyOrderDomain(remote) : null;

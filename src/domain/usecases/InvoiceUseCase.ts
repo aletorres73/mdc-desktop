@@ -25,11 +25,20 @@ export class InvoiceUseCase {
     return this.invoiceRepo.getInvoiceByBillingNumber(uid, billingNumber);
   }
 
+  getAllInvoices(uid: string): Promise<BillingModel[]> {
+    return this.invoiceRepo.getAllInvoices(uid);
+  }
+
+  getInvoicesByOrder(uid: string, orderIds: string[]): Promise<BillingModel[]> {
+    return this.invoiceRepo.getInvoicesByOrder(uid, orderIds);
+  }
+
   async createInvoice(uid: string, billing: BillingModel): Promise<string> {
     const normalizedNumber = billing.billingNumber.trim();
     if (!normalizedNumber) throw new Error("Ingresá un número de factura");
     if (!billing.clientId || !billing.clientName.trim()) throw new Error("Seleccioná un cliente");
     if (!billing.brand.trim()) throw new Error("Seleccioná una fábrica");
+    if (!Number.isFinite(billing.total) || billing.total <= 0) throw new Error("El total debe ser mayor a 0");
 
     const factory = (await this.factoryRepo.getFactoryByName(uid, billing.brand)) ?? undefined;
     if (!factory) throw new Error("La fábrica seleccionada no existe");

@@ -11,6 +11,7 @@ import {
   UserCircle,
   LogOut,
   Wallet,
+  ShoppingBag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/presentation/contexts/AuthContext";
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { to: ROUTES.HOME, label: "Inicio", icon: LayoutDashboard },
   { to: ROUTES.CLIENTS, label: "Clientes", icon: Users },
   { to: ROUTES.INVOICES, label: "Facturas", icon: Receipt },
+  { to: ROUTES.BUY_ORDERS, label: "Pedidos", icon: ShoppingBag },
   { to: ROUTES.PAYMENT_REGISTER, label: "Pagos", icon: Wallet },
   { to: ROUTES.AGENDA, label: "Agenda", icon: CalendarClock },
   { to: ROUTES.COMMISSIONS, label: "Comisiones", icon: Percent },

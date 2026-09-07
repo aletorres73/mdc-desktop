@@ -42,3 +42,11 @@ export const MOVEMENT_METHOD_LABELS: Record<MovementMethod, string> = {
   NOTA_CREDITO: "Nota de Crédito",
   DESCUENTO_EXTRA: "Descuento Extra",
 };
+
+/** displayName alineado con MovementStatus de la app móvil. */
+export const MOVEMENT_STATUS_LABELS: Record<MovementStatus, string> = {
+  PENDIENTE: "Pendiente",
+  COBRADO: "Cobrado",
+  RECONCILIADO: "Conciliado",
+  IMPUTADO: "Imputado",
+};

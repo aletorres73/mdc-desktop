@@ -15,6 +15,7 @@ import EditInvoice from "@/presentation/pages/EditInvoice";
 import Clients from "@/presentation/pages/Clients";
 import ClientDetail from "@/presentation/pages/ClientDetail";
 import Orders from "@/presentation/pages/Orders";
+import BuyOrders from "@/presentation/pages/BuyOrders";
 import OrderDetail from "@/presentation/pages/OrderDetail";
 import CreateOrder from "@/presentation/pages/CreateOrder";
 import Factories from "@/presentation/pages/Factories";
@@ -63,6 +64,7 @@ function App() {
                 <Route path={ROUTES.CLIENTS} element={<Clients />} />
                 <Route path={ROUTES.CLIENT_DETAIL} element={<ClientDetail />} />
                 <Route path={ROUTES.ORDERS} element={<Orders />} />
+                <Route path={ROUTES.BUY_ORDERS} element={<BuyOrders />} />
                 <Route path={ROUTES.ORDER_DETAIL} element={<OrderDetail />} />
                 <Route path={ROUTES.CREATE_ORDER} element={<CreateOrder />} />
                 <Route path={ROUTES.FACTORIES} element={<Factories />} />

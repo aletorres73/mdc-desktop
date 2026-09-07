@@ -1,26 +1,31 @@
 import { useMemo, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useBuyOrder } from "@/presentation/hooks/useBuyOrders";
 import { useCreateInvoiceFromOrder } from "@/presentation/hooks/useBuyOrders";
+import { useOrderInvoices } from "@/presentation/hooks/useInvoices";
 import { buyOrderUseCase, invoiceUseCase } from "@/di/container";
 import { Card, CardContent, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
+import { Badge, stateToBadgeVariant } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
 import { Input } from "@/presentation/components/ui/input";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/presentation/components/ui/dialog";
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { formatMoney, formatDate } from "@/lib/utils";
-import { clientDetailPath } from "@/presentation/routes/routes";
+import { clientDetailPath, editInvoicePath, invoiceDetailPath } from "@/presentation/routes/routes";
 import { ArrowLeft, Receipt } from "lucide-react";
 
 export default function OrderDetail() {
   const { clientId, orderId } = useParams<{ clientId: string; orderId: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const { appUser } = useAuth();
   const { data: order, isLoading } = useBuyOrder(appUser?.uid, clientId, orderId);
   const createInvoice = useCreateInvoiceFromOrder(appUser?.uid);
+  // Las facturas referencian al pedido por id (que coincide con el número de orden).
+  const orderInvoices = useOrderInvoices(appUser?.uid, [order?.id, order?.order]);
 
   const [billingNumber, setBillingNumber] = useState("");
   const [open, setOpen] = useState(false);
@@ -48,9 +53,10 @@ export default function OrderDetail() {
     const value = billingNumber.trim();
     if (!value) return;
     if (hasDuplicateInvoice) return;
-    await createInvoice.mutateAsync({ clientId: clientId!, orderId: orderId!, billingNumber: value });
+    const invoiceId = await createInvoice.mutateAsync({ clientId: clientId!, orderId: orderId!, billingNumber: value });
     setOpen(false);
     setBillingNumber("");
+    navigate(editInvoicePath(invoiceId), { state: { backToPath: location.pathname + location.search } });
   };
 
   return (
@@ -107,6 +113,52 @@ export default function OrderDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-border/50 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Facturas y remitos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {orderInvoices.isLoading ? (
+            <p className="text-sm text-muted-foreground">Cargando documentos asociados...</p>
+          ) : orderInvoices.isError ? (
+            <p className="text-sm font-medium text-destructive">No se pudieron cargar los documentos asociados.</p>
+          ) : !orderInvoices.data?.length ? (
+            <p className="text-sm text-muted-foreground">Sin documentos asociados a este pedido.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Número</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Saldo</TableHead>
+                  <TableHead>Estado</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orderInvoices.data.map((invoice) => (
+                  <TableRow
+                    key={invoice.id}
+                    className="cursor-pointer"
+                    onClick={() => navigate(invoiceDetailPath(invoice.id!))}
+                  >
+                    <TableCell className="font-medium">{invoice.billingNumber}</TableCell>
+                    <TableCell>{invoice.type}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(invoice.loadDate)}</TableCell>
+                    <TableCell className="tabular-nums">{formatMoney(invoice.total)}</TableCell>
+                    <TableCell className="tabular-nums">{formatMoney(invoice.rest)}</TableCell>
+                    <TableCell>
+                      <Badge variant={stateToBadgeVariant(invoice.stateBilling)}>{invoice.stateBilling}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-border/50 shadow-sm">
         <CardHeader>

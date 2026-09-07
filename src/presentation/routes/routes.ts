@@ -12,6 +12,7 @@ export const ROUTES = {
   CLIENTS: "/clients",
   CLIENT_DETAIL: "/clients/:clientId",
   ORDERS: "/orders",
+  BUY_ORDERS: "/buy-orders",
   ORDER_DETAIL: "/clients/:clientId/orders/:orderId",
   CREATE_ORDER: "/clients/:clientId/orders/new",
   FACTORIES: "/factories",
