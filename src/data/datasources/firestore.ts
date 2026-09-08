@@ -13,6 +13,8 @@ import {
   orderBy,
   limit,
   startAfter,
+  runTransaction,
+  type Transaction,
   type DocumentData,
   type QueryConstraint,
   type QueryDocumentSnapshot,
@@ -20,6 +22,13 @@ import {
 import { db } from "@/data/datasources/config";
 
 // Firestore rejects `undefined` values, including nested inside arrays/objects.
+
+export async function runFirestoreTransaction<T>(
+  updateFunction: (transaction: Transaction) => Promise<T>
+): Promise<T> {
+  return runTransaction(db, updateFunction);
+}
+
 export function stripUndefined<T>(value: T): T {
   if (Array.isArray(value)) {
     return value.map((v) => stripUndefined(v)) as unknown as T;

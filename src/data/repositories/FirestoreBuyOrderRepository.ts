@@ -1,4 +1,4 @@
-import { getCollection, getCollectionGroup, getDocument, setDocument, deleteDocument } from "@/data/datasources/firestore";
+import { getCollection, getCollectionGroup, getDocument, setDocument, deleteDocument, runFirestoreTransaction, docRef } from "@/data/datasources/firestore";
 import { toBuyOrderDomain, toBuyOrderRemote } from "@/data/mappers/buyOrderMapper";
 import type { RemoteResultBuyOrder } from "@/data/remote/remoteBuyOrder";
 import type { IBuyOrderRepository } from "@/domain/repositories/IBuyOrderRepository";
@@ -54,23 +54,35 @@ export class FirestoreBuyOrderRepository implements IBuyOrderRepository {
 
   async nextOrderNumber(uid: string): Promise<number> {
     const configPath = `users/${uid}/config`;
+    // 1. Escaneo preventivo fuera de la transacción (por si el contador no existe aún)
     const counters = await getDocument<{ lastOrderNumber?: number }>(configPath, "counters");
-    let last = counters?.lastOrderNumber ?? 0;
-    if (last === 0) {
-      // Escaneo de emergencia: buscar el "Orden Id" numérico más alto en todos los pedidos.
-      // Puede fallar por reglas de seguridad en collectionGroup; en ese caso se arranca en 1.
+    let initialScanLast = 0;
+    if (!counters || (counters.lastOrderNumber ?? 0) === 0) {
       try {
         const all = await getCollectionGroup<RemoteResultBuyOrder>("buyOrders");
         for (const remote of all) {
           const n = parseInt(String(remote["Orden Id"] ?? "").replace(/\D/g, ""), 10) || 0;
-          if (n > last) last = n;
+          if (n > initialScanLast) initialScanLast = n;
         }
       } catch {
         // Sin permisos para el escaneo global: se usa el contador local.
       }
     }
-    const next = last + 1;
-    await setDocument(configPath, "counters", { lastOrderNumber: next });
-    return next;
+
+    // 2. Transacción atómica para obtener e incrementar el ID
+    return runFirestoreTransaction(async (transaction) => {
+      const counterReference = docRef(configPath, "counters");
+      const counterSnap = await transaction.get(counterReference);      
+      let currentLast = counterSnap.exists() ? (counterSnap.data().lastOrderNumber ?? 0) : 0;
+      // Si el contador está vacío, usamos el valor del escaneo previo
+      if (currentLast === 0 && initialScanLast > 0) {
+        currentLast = initialScanLast;
+      }
+      const next = currentLast + 1;
+      // Utilizamos merge para no sobreescribir el contador de clientes si están en el mismo documento
+      transaction.set(counterReference, { lastOrderNumber: next }, { merge: true });
+      
+      return next;
+    });
   }
 }

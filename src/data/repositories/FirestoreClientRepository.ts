@@ -6,6 +6,8 @@ import {
   updateDocument,
   deleteDocument,
   where,
+  docRef,
+  runFirestoreTransaction,
 } from "@/data/datasources/firestore";
 import { toClientDomain, toClientRemote } from "@/data/mappers/clientMapper";
 import type { RemoteResultClientModel } from "@/data/remote/remoteClient";
@@ -44,14 +46,21 @@ export class FirestoreClientRepository implements IClientRepository {
   }
 
   async createClient(uid: string, client: ClientModel): Promise<void> {
+    // La creación del cliente se mantiene igual
     await setDocument(this.path(uid), client.clientId, toClientRemote(client));
-    // Mantener el contador por encima del ID más alto creado.
+    
     const n = this.numericId(client.clientId);
     if (n > 0) {
-      const counters = await getDocument<{ lastClientNumber?: number }>(this.configPath(uid), "counters");
-      if (n > (counters?.lastClientNumber ?? 0)) {
-        await setDocument(this.configPath(uid), "counters", { lastClientNumber: n });
-      }
+      // Bloque transaccional para evitar pisar el contador si 2 usuarios crean clientes a la vez
+      await runFirestoreTransaction(async (transaction) => {
+        const counterReference = docRef(this.configPath(uid), "counters");
+        const counterSnap = await transaction.get(counterReference);
+        const currentLast = counterSnap.exists() ? (counterSnap.data().lastClientNumber ?? 0) : 0;
+        
+        if (n > currentLast) {
+          transaction.set(counterReference, { lastClientNumber: n }, { merge: true });
+        }
+      });
     }
   }
 
@@ -87,12 +96,16 @@ export class FirestoreClientRepository implements IClientRepository {
 
     // Regla de borrado: si se elimina el ID más alto, el contador retrocede para reutilizar el espacio.
     const n = this.numericId(clientId);
-    if (n > 0) {
-      const counters = await getDocument<{ lastClientNumber?: number }>(this.configPath(uid), "counters");
-      if (counters && n === (counters.lastClientNumber ?? 0)) {
-        await setDocument(this.configPath(uid), "counters", { lastClientNumber: n - 1 });
-      }
-    }
+    // Regla de borrado con transacción atómica
+      await runFirestoreTransaction(async (transaction) => {
+        const counterReference = docRef(this.configPath(uid), "counters");
+        const counterSnap = await transaction.get(counterReference);
+        const currentLast = counterSnap.exists() ? (counterSnap.data().lastClientNumber ?? 0) : 0;
+        
+        if (n === currentLast) {
+          transaction.set(counterReference, { lastClientNumber: n - 1 }, { merge: true });
+        }
+      });
   }
 
   private async hasAnyOrderForUser(uid: string): Promise<boolean> {
