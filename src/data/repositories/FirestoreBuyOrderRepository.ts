@@ -1,4 +1,4 @@
-import { getCollection, getCollectionGroup, getDocument, setDocument, deleteDocument, runFirestoreTransaction, docRef } from "@/data/datasources/firestore";
+import { getCollection, getCollectionGroup, getDocument, setDocument, deleteDocument, runFirestoreTransaction, docRef, where } from "@/data/datasources/firestore";
 import { toBuyOrderDomain, toBuyOrderRemote } from "@/data/mappers/buyOrderMapper";
 import type { RemoteResultBuyOrder } from "@/data/remote/remoteBuyOrder";
 import type { IBuyOrderRepository } from "@/domain/repositories/IBuyOrderRepository";
@@ -15,23 +15,16 @@ export class FirestoreBuyOrderRepository implements IBuyOrderRepository {
   }
 
   async getAllBuyOrders(uid: string): Promise<BuyOrderModel[]> {
-    // Las reglas de seguridad suelen bloquear collectionGroup entre usuarios;
-    // si falla, se hace fan-out por cliente (una consulta por cliente).
     try {
-      const remote = await getCollectionGroup<RemoteResultBuyOrder & { __path?: string }>("buyOrders");
-      return remote
-        .filter((order) => order.__path?.startsWith(`users/${uid}/`))
-        .map(toBuyOrderDomain);
-    } catch {
-      const clients = await getCollection<{ id: string }>(`users/${uid}/clients`);
-      const perClient = await Promise.all(
-        clients.map((client) =>
-          getCollection<RemoteResultBuyOrder>(this.path(uid, client.id)).catch(
-            () => [] as RemoteResultBuyOrder[],
-          ),
-        ),
-      );
-      return perClient.flat().map(toBuyOrderDomain);
+      // Consulta atómica: Trae todas las órdenes de toda la base de datos 
+      // estrictamente filtradas por el propietario. (1 sola petición a Firebase)
+      const remote = await getCollectionGroup<RemoteResultBuyOrder>("buyOrders", [
+        where("uid", "==", uid)
+      ]);
+      return remote.map(toBuyOrderDomain);
+    } catch (error) {
+      console.error("Error al obtener pedidos globales.", error);
+      return []; 
     }
   }
 
@@ -41,11 +34,14 @@ export class FirestoreBuyOrderRepository implements IBuyOrderRepository {
   }
 
   async createBuyOrder(uid: string, order: BuyOrderModel): Promise<void> {
-    await setDocument(this.path(uid, order.clientId), order.id, toBuyOrderRemote(order));
+    // Inyectamos el 'uid' en el documento remoto para permitir el collectionGroup
+    const remoteData = { ...toBuyOrderRemote(order), uid };
+    await setDocument(this.path(uid, order.clientId), order.id, remoteData);
   }
 
   async updateBuyOrder(uid: string, order: BuyOrderModel): Promise<void> {
-    await setDocument(this.path(uid, order.clientId), order.id, toBuyOrderRemote(order));
+    const remoteData = { ...toBuyOrderRemote(order), uid };
+    await setDocument(this.path(uid, order.clientId), order.id, remoteData);
   }
 
   async deleteBuyOrder(uid: string, clientId: string, orderId: string): Promise<void> {
@@ -72,7 +68,7 @@ export class FirestoreBuyOrderRepository implements IBuyOrderRepository {
     // 2. Transacción atómica para obtener e incrementar el ID
     return runFirestoreTransaction(async (transaction) => {
       const counterReference = docRef(configPath, "counters");
-      const counterSnap = await transaction.get(counterReference);      
+      const counterSnap = await transaction.get(counterReference);
       let currentLast = counterSnap.exists() ? (counterSnap.data().lastOrderNumber ?? 0) : 0;
       // Si el contador está vacío, usamos el valor del escaneo previo
       if (currentLast === 0 && initialScanLast > 0) {
@@ -81,7 +77,7 @@ export class FirestoreBuyOrderRepository implements IBuyOrderRepository {
       const next = currentLast + 1;
       // Utilizamos merge para no sobreescribir el contador de clientes si están en el mismo documento
       transaction.set(counterReference, { lastOrderNumber: next }, { merge: true });
-      
+
       return next;
     });
   }
