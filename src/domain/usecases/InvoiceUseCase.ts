@@ -2,7 +2,7 @@ import type { IInvoiceRepository, InvoiceFilters } from "@/domain/repositories/I
 import type { IFactoryRepository } from "@/domain/repositories/IFactoryRepository";
 import type { IPaymentRegisterRepository } from "@/domain/repositories/IPaymentRegisterRepository";
 import type { BillingModel, BillingComments, InvoicePage } from "@/domain/entities/billing";
-import type { MovementMethod, PaymentRegisterModel } from "@/domain/entities/paymentRegister";
+import type { MovementMethod, /* PaymentRegisterModel */ } from "@/domain/entities/paymentRegister";
 import { recalculateBilling } from "@/domain/logic/recalculate";
 import { VIRTUAL_MOVEMENT_METHODS } from "@/domain/entities/paymentRegister";
 
@@ -15,6 +15,10 @@ export class InvoiceUseCase {
 
   getInvoicesPage(uid: string, filters: InvoiceFilters, pageSize: number, cursor?: string | null): Promise<InvoicePage> {
     return this.invoiceRepo.getInvoicesPage(uid, filters, pageSize, cursor);
+  }
+
+  getPendingInvoicesForAgenda(uid: string): Promise<BillingModel[]> {
+    return this.invoiceRepo.getPendingInvoicesForAgenda(uid);
   }
 
   getInvoice(uid: string, id: string): Promise<BillingModel | null> {

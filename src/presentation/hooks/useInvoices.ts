@@ -23,6 +23,16 @@ export function useInvoicesPage(
   });
 }
 
+// Agrega esto en src/presentation/hooks/useInvoices.ts
+export function usePendingInvoicesForAgenda(uid: string | undefined) {
+  return useQuery({
+    queryKey: ["agendaInvoices", uid],
+    // Asegúrate de haber expuesto getPendingInvoicesForAgenda en tu InvoiceUseCase
+    queryFn: () => invoiceUseCase.getPendingInvoicesForAgenda(uid!),
+    enabled: !!uid,
+  });
+}
+
 export function useInvoicesList(
   uid: string | undefined,
   params: {

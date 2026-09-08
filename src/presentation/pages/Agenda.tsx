@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
-import { useInvoicesPage } from "@/presentation/hooks/useInvoices";
+import { usePendingInvoicesForAgenda } from "@/presentation/hooks/useInvoices";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
 import { Badge, stateToBadgeVariant } from "@/presentation/components/ui/badge";
 import { Button } from "@/presentation/components/ui/button";
@@ -85,7 +85,7 @@ function formatDateParam(d: Date): string {
 export default function Agenda() {
   const location = useLocation();
   const { appUser } = useAuth();
-  const { data: page, isLoading } = useInvoicesPage(appUser?.uid, {}, 200);
+  const { data: pendingInvoices, isLoading } = usePendingInvoicesForAgenda(appUser?.uid);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const initialDate = parseDateParam(searchParams.get("date")) ?? new Date();
@@ -93,7 +93,7 @@ export default function Agenda() {
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getMonday(initialDate));
   const [isFilteringUrgent, setIsFilteringUrgent] = useState(searchParams.get("urgent") === "1");
 
-  const allBillings = page?.items ?? [];
+  const allBillings = pendingInvoices ?? [];
 
   // Total count of urgent or overdue billings
   const urgentBillingsCount = useMemo(() => {
