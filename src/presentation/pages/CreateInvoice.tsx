@@ -38,7 +38,7 @@ export default function CreateInvoice() {
   const factory = factories?.find((item) => item.name === factoryName);
   const condition = factory?.paymentType.find((item) => item.paymentName === paymentCondition);
   const needsBranch = (factory?.branchList.length ?? 0) > 0;
-  const clientOptions = (clients ?? []).map((item) => ({ value: item.clientId, label: `${item.clientName} (${item.clientId})` }));
+  const clientOptions = (clients ?? []).filter((item) => item.isActive !== false).map((item) => ({ value: item.clientId, label: `${item.clientName} (${item.clientId})` }));
   const factoryOptions = (factories ?? []).map((item) => ({ value: item.name, label: item.name }));
   const branchOptions = (factory?.branchList ?? []).map((item) => ({ value: item, label: item }));
   const conditionOptions = (factory?.paymentType ?? []).map((item) => ({ value: item.paymentName, label: item.paymentName }));

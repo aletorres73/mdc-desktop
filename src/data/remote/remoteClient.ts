@@ -1,6 +1,7 @@
 export interface RemoteResultClientModel {
   "Cliente Id": string;
   "Razón Social": string;
+  "Activo"?: boolean;
 }
 
 export interface RemoteResultInfoClientModel {

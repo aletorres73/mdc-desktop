@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
-import { useClients, useCreateClient, useDeleteClient, useSuggestedClientId } from "@/presentation/hooks/useClients";
+import { useClients, useCreateClient, useDeleteClient, useSuggestedClientId, useUpdateClient } from "@/presentation/hooks/useClients";
 import { Input } from "@/presentation/components/ui/input";
 import { Button } from "@/presentation/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
@@ -9,8 +9,9 @@ import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { EmptyState } from "@/presentation/components/shared/EmptyState";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/presentation/components/ui/dialog";
 import { Label } from "@/presentation/components/ui/label";
+import { Badge } from "@/presentation/components/ui/badge";
 import { clientDetailPath } from "@/presentation/routes/routes";
-import { Search, UserPlus, Users, Trash2 } from "lucide-react";
+import { Search, UserPlus, Users, Archive, RotateCcw } from "lucide-react";
 
 export default function Clients() {
   const { appUser } = useAuth();
@@ -20,11 +21,15 @@ export default function Clients() {
   const [newClientName, setNewClientName] = useState("");
   const [newClientId, setNewClientId] = useState("");
   const [open, setOpen] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
 
   const { data: clients, isLoading } = useClients(appUser?.uid, search);
   const createClient = useCreateClient(appUser?.uid);
   const deleteClient = useDeleteClient(appUser?.uid);
+  const updateClient = useUpdateClient(appUser?.uid);
   const { data: suggestedId } = useSuggestedClientId(appUser?.uid, open);
+
+  const visibleClients = (clients ?? []).filter((client) => showInactive || client.isActive !== false);
 
   const updateSearch = (value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -78,19 +83,29 @@ export default function Clients() {
         </Dialog>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por razón social..."
-          className="pl-9"
-          value={search}
-          onChange={(e) => updateSearch(e.target.value)}
-        />
+      <div className="flex items-center justify-between gap-4">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por razón social..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => updateSearch(e.target.value)}
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={showInactive}
+            onChange={(e) => setShowInactive(e.target.checked)}
+          />
+          Mostrar inactivos
+        </label>
       </div>
 
       {isLoading ? (
         <LoadingState />
-      ) : !clients?.length ? (
+      ) : !visibleClients.length ? (
         <EmptyState icon={Users} title="Sin clientes" description="Creá el primer cliente para empezar." />
       ) : (
         <Table>
@@ -102,7 +117,7 @@ export default function Clients() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {clients.map((client) => (
+            {visibleClients.map((client) => (
               <TableRow key={client.clientId}>
                 <TableCell className="text-muted-foreground">{client.clientId}</TableCell>
                 <TableCell>
@@ -113,18 +128,34 @@ export default function Clients() {
                   >
                     {client.clientName}
                   </Link>
+                  {client.isActive === false && (
+                    <Badge variant="muted" className="ml-2">Inactivo</Badge>
+                  )}
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    loading={deleteClient.isPending && deleteClient.variables === client.clientId}
-                    disabled={deleteClient.isPending}
-                    onClick={() => deleteClient.mutate(client.clientId)}
-                    aria-label="Eliminar cliente"
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  {client.isActive === false ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      loading={updateClient.isPending && updateClient.variables?.clientId === client.clientId}
+                      disabled={updateClient.isPending}
+                      onClick={() => updateClient.mutate({ clientId: client.clientId, data: { isActive: true } })}
+                      aria-label="Restaurar cliente"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      loading={deleteClient.isPending && deleteClient.variables === client.clientId}
+                      disabled={deleteClient.isPending}
+                      onClick={() => deleteClient.mutate(client.clientId)}
+                      aria-label="Inhabilitar cliente"
+                    >
+                      <Archive className="h-4 w-4 text-destructive" />
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

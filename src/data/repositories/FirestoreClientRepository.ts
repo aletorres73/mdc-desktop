@@ -1,10 +1,8 @@
 import {
   getCollection,
-  getCollectionGroup,
   getDocument,
   setDocument,
   updateDocument,
-  deleteDocument,
   where,
   docRef,
   runFirestoreTransaction,
@@ -65,56 +63,15 @@ export class FirestoreClientRepository implements IClientRepository {
   }
 
   async updateClient(uid: string, clientId: string, data: Partial<ClientModel>): Promise<void> {
-    await updateDocument(this.path(uid), clientId, data);
+    const remoteData: Partial<RemoteResultClientModel> = {};
+    if (data.clientName !== undefined) remoteData["Razón Social"] = data.clientName;
+    if (data.isActive !== undefined) remoteData["Activo"] = data.isActive;
+    await updateDocument(this.path(uid), clientId, remoteData);
   }
 
   async deleteClient(uid: string, clientId: string): Promise<void> {
-    const clientOrdersPath = `users/${uid}/clients/${clientId}/buyOrders`;
-    const clientOrders = await getCollection(clientOrdersPath);
-    for (const order of clientOrders) {
-      await deleteDocument(clientOrdersPath, order.id);
-    }
-
-    const billingPath = `users/${uid}/allBillings`;
-    const billings = await getCollection<{ id: string }>(billingPath, [where("Cliente Id", "==", clientId)]);
-    for (const billing of billings) {
-      await deleteDocument(billingPath, billing.id);
-    }
-
-    const paymentPath = `users/${uid}/paymentRegister`;
-    const payments = await getCollection<{ id: string }>(paymentPath, [where("Cliente ID", "==", clientId)]);
-    for (const payment of payments) {
-      await deleteDocument(paymentPath, payment.id);
-    }
-
-    await deleteDocument(this.path(uid), clientId);
-
-    const hasRemainingOrders = await this.hasAnyOrderForUser(uid);
-    if (!hasRemainingOrders) {
-      await setDocument(this.configPath(uid), "counters", { lastOrderNumber: 0 });
-    }
-
-    // Regla de borrado: si se elimina el ID más alto, el contador retrocede para reutilizar el espacio.
-    const n = this.numericId(clientId);
-    // Regla de borrado con transacción atómica
-      await runFirestoreTransaction(async (transaction) => {
-        const counterReference = docRef(this.configPath(uid), "counters");
-        const counterSnap = await transaction.get(counterReference);
-        const currentLast = counterSnap.exists() ? (counterSnap.data().lastClientNumber ?? 0) : 0;
-        
-        if (n === currentLast) {
-          transaction.set(counterReference, { lastClientNumber: n - 1 }, { merge: true });
-        }
-      });
-  }
-
-  private async hasAnyOrderForUser(uid: string): Promise<boolean> {
-    try {
-      const all = await getCollectionGroup<{ __path?: string }>("buyOrders");
-      return all.some((order) => order.__path?.startsWith(`users/${uid}/`));
-    } catch {
-      return true;
-    }
+    // Soft delete: preserva historial contable (facturas, pagos, pedidos), solo inhabilita.
+    await updateDocument(this.path(uid), clientId, { "Activo": false });
   }
 
   async suggestNextClientId(uid: string): Promise<string> {

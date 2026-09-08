@@ -5,6 +5,7 @@ export function toClientDomain(remote: RemoteResultClientModel): ClientModel {
   return {
     clientId: remote["Cliente Id"] || "",
     clientName: remote["Razón Social"] || "",
+    isActive: remote["Activo"] ?? true,
   };
 }
 
@@ -12,6 +13,7 @@ export function toClientRemote(domain: ClientModel): RemoteResultClientModel {
   return {
     "Cliente Id": domain.clientId,
     "Razón Social": domain.clientName,
+    "Activo": domain.isActive ?? true,
   };
 }
 

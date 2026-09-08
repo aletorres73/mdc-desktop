@@ -1,6 +1,7 @@
 export interface ClientModel {
   clientId: string;
   clientName: string;
+  isActive?: boolean;
 }
 
 export interface InfoClientModel extends ClientModel {
