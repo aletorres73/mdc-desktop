@@ -67,6 +67,7 @@ function App() {
                 <Route path={ROUTES.BUY_ORDERS} element={<BuyOrders />} />
                 <Route path={ROUTES.ORDER_DETAIL} element={<OrderDetail />} />
                 <Route path={ROUTES.CREATE_ORDER} element={<CreateOrder />} />
+                <Route path={ROUTES.EDIT_ORDER} element={<CreateOrder />} />
                 <Route path={ROUTES.FACTORIES} element={<Factories />} />
                 <Route path={ROUTES.FACTORY_DETAIL} element={<FactoryDetail />} />
                 {/* Phase 4+: add more routes here */}

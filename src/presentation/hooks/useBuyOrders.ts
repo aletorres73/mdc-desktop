@@ -44,6 +44,7 @@ export function useUpdateBuyOrder(uid: string | undefined, clientId: string | un
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["buyOrders", uid, clientId] });
       queryClient.invalidateQueries({ queryKey: ["allBuyOrders", uid] });
+      queryClient.invalidateQueries({ queryKey: ["buyOrder", uid, clientId] });
     },
   });
 }
