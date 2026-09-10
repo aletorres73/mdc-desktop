@@ -29,6 +29,7 @@ export default function EditInvoice() {
   const [paymentCondition, setPaymentCondition] = useState("");
   const [billingNumber, setBillingNumber] = useState("");
   const [type, setType] = useState("Factura");
+  const [loadDate, setLoadDate] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [total, setTotal] = useState("");
   const [error, setError] = useState("");
@@ -48,6 +49,7 @@ export default function EditInvoice() {
     setPaymentCondition(invoice.paymentCondition);
     setBillingNumber(invoice.billingNumber);
     setType(invoice.type);
+    setLoadDate(invoice.loadDate ? new Date(invoice.loadDate).toISOString().slice(0, 10) : "");
     setDeliveryDate(invoice.deliveryDate ? new Date(invoice.deliveryDate).toISOString().slice(0, 10) : "");
     setTotal(String(invoice.total));
   }, [invoice]);
@@ -55,7 +57,7 @@ export default function EditInvoice() {
   const client = clients?.find((item) => item.clientId === clientId);
   const factory = factories?.find((item) => item.name === factoryName);
   const condition = factory?.paymentType.find((item) => item.paymentName === paymentCondition);
-  const isOrderInvoice = invoice?.orderId.trim().length > 0;
+  const isOrderInvoice = Boolean(invoice?.orderId?.trim());
   const needsBranch = (factory?.branchList.length ?? 0) > 0;
   const selectedBranch = branch || (isOrderInvoice ? factory?.branchList[0] ?? "" : "");
   const clientOptions = (clients ?? []).map((item) => ({ value: item.clientId, label: `${item.clientName} (${item.clientId})` }));
@@ -83,6 +85,7 @@ export default function EditInvoice() {
       await updateInvoice.mutateAsync({
         billingNumber: billingNumber.trim(), clientId: client.clientId, clientName: client.clientName,
         brand: factory.name, branch: selectedBranch, paymentCondition, type, total: numericTotal,
+        loadDate: loadDate ? new Date(loadDate).getTime() : Date.now(),
         deliveryDate: deliveryDate ? new Date(deliveryDate).getTime() : 0,
         expectedDiscount: discount, toPay: numericTotal * (1 - discount / 100),
       });
@@ -138,6 +141,10 @@ export default function EditInvoice() {
             <div className="space-y-1.5">
               <Label>Tipo de documento</Label>
               <Select options={[{ value: "Factura", label: "Factura" }, { value: "Remito", label: "Remito" }]} value={type} onChange={(event) => setType(event.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Fecha de emisión</Label>
+              <DateInput value={loadDate} onChange={setLoadDate} />
             </div>
             <div className="space-y-1.5">
               <Label>Fecha de recepción</Label>
