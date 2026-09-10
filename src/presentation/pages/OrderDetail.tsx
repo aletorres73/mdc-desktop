@@ -14,8 +14,8 @@ import { Input } from "@/presentation/components/ui/input";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/presentation/components/ui/dialog";
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { formatMoney, formatDate } from "@/lib/utils";
-import { clientDetailPath, editInvoicePath, invoiceDetailPath } from "@/presentation/routes/routes";
-import { ArrowLeft, Receipt } from "lucide-react";
+import { clientDetailPath, editInvoicePath, editOrderPath, invoiceDetailPath } from "@/presentation/routes/routes";
+import { ArrowLeft, Pencil, Receipt } from "lucide-react";
 
 export default function OrderDetail() {
   const { clientId, orderId } = useParams<{ clientId: string; orderId: string }>();
@@ -69,8 +69,12 @@ export default function OrderDetail() {
           <h1 className="text-2xl font-bold tracking-tight">Pedido {order.order}</h1>
           <p className="text-sm text-muted-foreground">{order.client} · {order.factory} · {order.branch}</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button><Receipt className="h-4 w-4" />Facturar pedido</Button>} />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate(editOrderPath(clientId!, orderId!))}>
+            <Pencil className="h-4 w-4" />Editar pedido
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger render={<Button><Receipt className="h-4 w-4" />Facturar pedido</Button>} />
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Generar factura</DialogTitle>
@@ -90,7 +94,8 @@ export default function OrderDetail() {
               </Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

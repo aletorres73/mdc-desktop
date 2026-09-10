@@ -27,6 +27,7 @@ export default function CreateInvoice() {
   const [paymentCondition, setPaymentCondition] = useState("");
   const [billingNumber, setBillingNumber] = useState("");
   const [type, setType] = useState("Factura");
+  const [loadDate, setLoadDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [deliveryDate, setDeliveryDate] = useState("");
   const [total, setTotal] = useState("");
   const [error, setError] = useState("");
@@ -60,7 +61,7 @@ export default function CreateInvoice() {
         orderId: "",
         type,
         total: numericTotal,
-        loadDate: Date.now(),
+        loadDate: loadDate ? new Date(loadDate).getTime() : Date.now(),
         deliveryDate: deliveryDate ? new Date(deliveryDate).getTime() : 0,
         payDate: 0,
         articles: [],
@@ -101,6 +102,7 @@ export default function CreateInvoice() {
           <div className="space-y-1.5"><Label>Marca / segmento{needsBranch ? "" : " (opcional)"}</Label><Select options={branchOptions} placeholder="Seleccionar segmento" value={branch} onChange={(event) => setBranch(event.target.value)} disabled={!factory || !needsBranch} /></div>
           <div className="space-y-1.5"><Label>Condición de pago</Label><Select options={conditionOptions} placeholder="Sin condición" value={paymentCondition} onChange={(event) => setPaymentCondition(event.target.value)} disabled={!factory} /></div>
           <div className="space-y-1.5"><Label>Tipo de documento</Label><Select options={[{ value: "Factura", label: "Factura" }, { value: "Remito", label: "Remito" }]} value={type} onChange={(event) => setType(event.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Fecha de emisión</Label><DateInput value={loadDate} onChange={setLoadDate} /></div>
           <div className="space-y-1.5"><Label>Fecha de recepción</Label><DateInput value={deliveryDate} onChange={setDeliveryDate} /></div>
           <div className="space-y-1.5"><Label>Total</Label><Input type="number" min="0" step="0.01" value={total} onChange={(event) => setTotal(event.target.value)} /></div>
         </CardContent>

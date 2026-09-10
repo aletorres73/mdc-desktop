@@ -15,6 +15,7 @@ export const ROUTES = {
   BUY_ORDERS: "/buy-orders",
   ORDER_DETAIL: "/clients/:clientId/orders/:orderId",
   CREATE_ORDER: "/clients/:clientId/orders/new",
+  EDIT_ORDER: "/clients/:clientId/orders/:orderId/edit",
   FACTORIES: "/factories",
   FACTORY_DETAIL: "/factories/:factoryName",
   AGENDA: "/agenda",
@@ -40,6 +41,10 @@ export function orderDetailPath(clientId: string, orderId: string) {
 
 export function createOrderPath(clientId: string) {
   return `/clients/${clientId}/orders/new`;
+}
+
+export function editOrderPath(clientId: string, orderId: string) {
+  return `/clients/${clientId}/orders/${orderId}/edit`;
 }
 
 export function factoryDetailPath(factoryName: string) {
