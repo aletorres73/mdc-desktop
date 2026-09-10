@@ -17,6 +17,7 @@ export interface IInvoiceRepository {
   ): Promise<InvoicePage>;
   getInvoice(uid: string, id: string): Promise<BillingModel | null>;
   getInvoiceByBillingNumber(uid: string, billingNumber: string): Promise<BillingModel | null>;
+  getInvoicesByBillingNumbers(uid: string, billingNumbers: string[]): Promise<BillingModel[]>;
   getAllInvoices(uid: string): Promise<BillingModel[]>;
   /** Facturas/remitos asociados a uno o más pedidos (campo remoto "Orden"). */
   getInvoicesByOrder(uid: string, orderIds: string[]): Promise<BillingModel[]>;

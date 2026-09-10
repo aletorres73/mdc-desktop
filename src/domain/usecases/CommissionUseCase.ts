@@ -40,19 +40,16 @@ export class CommissionUseCase {
     filters: CommissionFilters = {},
   ): Promise<CommissionSummary[]> {
     const factories = await this.factoryRepo.getFactories(uid);
-    const invoices = [];
-    let cursor: string | null = null;
-    let endReached = false;
-
-    while (!endReached) {
-      const page = await this.invoiceRepo.getInvoicesPage(uid, {}, 500, cursor);
-      invoices.push(...page.items);
-      endReached = page.endReached;
-      cursor = page.nextCursor;
-    }
-
+    const payments = await this.paymentRepo.getMovements(uid, {
+      branch: filters.brand,
+      dateFrom: filters.startDate,
+      dateTo: filters.endDate,
+    });
+    const invoices = await this.invoiceRepo.getInvoicesByBillingNumbers(
+      uid,
+      payments.map((payment) => payment.documentNumber),
+    );
     const invoicesByNumber = new Map(invoices.map((invoice) => [invoice.billingNumber, invoice]));
-    const payments = await this.paymentRepo.getMovements(uid);
 
     return payments
       .filter((payment) => !payment.isVirtual && !VIRTUAL_MOVEMENT_METHODS.includes(payment.method))
