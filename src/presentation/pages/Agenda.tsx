@@ -85,13 +85,15 @@ function formatDateParam(d: Date): string {
 export default function Agenda() {
   const location = useLocation();
   const { appUser } = useAuth();
-  const { data: pendingInvoices, isLoading } = usePendingInvoicesForAgenda(appUser?.uid);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const initialDate = parseDateParam(searchParams.get("date")) ?? new Date();
   const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getMonday(initialDate));
   const [isFilteringUrgent, setIsFilteringUrgent] = useState(searchParams.get("urgent") === "1");
+  const weekStart = currentWeekStart.getTime();
+  const weekEnd = addDays(currentWeekStart, 7).getTime() - 1;
+  const { data: pendingInvoices, isLoading } = usePendingInvoicesForAgenda(appUser?.uid, weekStart, weekEnd);
 
   const allBillings = pendingInvoices ?? [];
 
@@ -176,14 +178,12 @@ export default function Agenda() {
   };
 
   const toggleUrgentFilter = () => {
-    setIsFilteringUrgent((prev) => {
-      const next = !prev;
-      const params = new URLSearchParams(searchParams);
-      if (next) params.set("urgent", "1");
-      else params.delete("urgent");
-      setSearchParams(params, { replace: true });
-      return next;
-    });
+    const next = !isFilteringUrgent;
+    setIsFilteringUrgent(next);
+    const params = new URLSearchParams(searchParams);
+    if (next) params.set("urgent", "1");
+    else params.delete("urgent");
+    setSearchParams(params, { replace: true });
   };
 
   return (

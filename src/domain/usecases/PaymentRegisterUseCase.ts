@@ -37,6 +37,26 @@ export class PaymentRegisterUseCase {
     });
   }
 
+  async updateMovement(
+    uid: string,
+    id: number,
+    input: { amount: number; method: MovementMethod; notes: string; date: number },
+  ): Promise<void> {
+    if (!Number.isFinite(input.amount) || input.amount <= 0) {
+      throw new Error("El monto debe ser mayor a cero");
+    }
+    if (!Number.isFinite(input.date) || input.date > Date.now()) {
+      throw new Error("La fecha de pago no puede ser futura");
+    }
+    await this.repo.updateMovement(uid, id, {
+      total: input.amount,
+      method: input.method,
+      notes: input.notes,
+      date: input.date,
+      isVirtual: this.isVirtual(input.method),
+    });
+  }
+
   deleteMovement(uid: string, id: number): Promise<void> {
     return this.repo.deleteMovement(uid, id);
   }

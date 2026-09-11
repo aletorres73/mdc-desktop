@@ -24,5 +24,5 @@ export interface IInvoiceRepository {
   createInvoice(uid: string, billing: BillingModel): Promise<string>;
   updateInvoice(uid: string, id: string, data: Partial<BillingModel>): Promise<void>;
   deleteInvoice(uid: string, id: string): Promise<void>;
-  getPendingInvoicesForAgenda(uid: string): Promise<BillingModel[]>;
+  getPendingInvoicesForAgenda(uid: string, dateFrom: number, dateTo: number): Promise<BillingModel[]>;
 }

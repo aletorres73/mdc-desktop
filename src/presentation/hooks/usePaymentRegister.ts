@@ -28,6 +28,15 @@ export function useReconcileMovement(uid: string | undefined) {
   });
 }
 
+export function useUpdateMovement(uid: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { movementId: number; amount: number; method: PaymentRegisterModel["method"]; notes: string; date: number }) =>
+      paymentRegisterUseCase.updateMovement(uid!, input.movementId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["paymentRegister", uid] }),
+  });
+}
+
 export function useDeleteMovement(uid: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({

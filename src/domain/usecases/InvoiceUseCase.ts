@@ -17,8 +17,8 @@ export class InvoiceUseCase {
     return this.invoiceRepo.getInvoicesPage(uid, filters, pageSize, cursor);
   }
 
-  getPendingInvoicesForAgenda(uid: string): Promise<BillingModel[]> {
-    return this.invoiceRepo.getPendingInvoicesForAgenda(uid);
+  getPendingInvoicesForAgenda(uid: string, dateFrom: number, dateTo: number): Promise<BillingModel[]> {
+    return this.invoiceRepo.getPendingInvoicesForAgenda(uid, dateFrom, dateTo);
   }
 
   getInvoice(uid: string, id: string): Promise<BillingModel | null> {
@@ -27,6 +27,10 @@ export class InvoiceUseCase {
 
   getInvoiceByBillingNumber(uid: string, billingNumber: string): Promise<BillingModel | null> {
     return this.invoiceRepo.getInvoiceByBillingNumber(uid, billingNumber);
+  }
+
+  getInvoicesByBillingNumbers(uid: string, billingNumbers: string[]): Promise<BillingModel[]> {
+    return this.invoiceRepo.getInvoicesByBillingNumbers(uid, billingNumbers);
   }
 
   getAllInvoices(uid: string): Promise<BillingModel[]> {
