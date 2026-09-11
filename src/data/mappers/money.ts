@@ -9,17 +9,17 @@ export function parseMoneyToNumber(moneyStr: string | number | undefined | null)
   if (lastDot >= 0 && lastComma >= 0) {
     const decimalSeparator = lastDot > lastComma ? "." : ",";
     const thousandsSeparator = decimalSeparator === "." ? "," : ".";
-    normalized = clean.replaceAll(thousandsSeparator, "").replace(decimalSeparator, ".");
+    normalized = clean.replace(new RegExp(`\\${thousandsSeparator}`, "g"), "").replace(decimalSeparator, ".");
   } else if (lastComma >= 0) {
     const decimals = clean.length - lastComma - 1;
     normalized = decimals <= 2
       ? clean.replace(",", ".")
-      : clean.replaceAll(",", "");
+      : clean.replace(/,/g, "");
   } else if (lastDot >= 0) {
     const decimals = clean.length - lastDot - 1;
     normalized = decimals <= 2
       ? clean
-      : clean.replaceAll(".", "");
+      : clean.replace(/\./g, "");
   }
 
   const num = Number(normalized);
