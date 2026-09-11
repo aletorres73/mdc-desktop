@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "allBillings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "`Cliente Id`",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "Timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

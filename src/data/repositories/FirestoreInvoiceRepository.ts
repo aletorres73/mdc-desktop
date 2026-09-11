@@ -55,31 +55,14 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     if (filters.brand) baseConstraints.push(where("Marca", "==", filters.brand));
     if (filters.state) baseConstraints.push(where("Estado", "==", filters.state));
 
-    // Filtros de búsqueda delegados a Firestore
-    if (filters.clientNamePrefix) {
-      baseConstraints.push(where("Razon Social", ">=", filters.clientNamePrefix));
-      baseConstraints.push(where("Razon Social", "<", filters.clientNamePrefix + "\uf8ff"));
-    } else if (filters.searchText) {
-      const searchTerm = filters.searchText.trim();
-      const isNumeric = /^\d+$/.test(searchTerm);
-
-      if (isNumeric) {
-        // Si el usuario ingresa solo números, buscamos por número de factura
-        baseConstraints.push(where("Numero", ">=", searchTerm));
-        baseConstraints.push(where("Numero", "<", searchTerm + "\uf8ff"));
-      } else {
-        // Si ingresa texto, buscamos por Razón Social. 
-        // Nota: Firestore distingue mayúsculas de minúsculas de forma nativa.
-        // Lo ideal para el futuro es guardar un campo "razonSocial_lower" en Firestore.
-        baseConstraints.push(where("Razon Social", ">=", searchTerm));
-        baseConstraints.push(where("Razon Social", "<", searchTerm + "\uf8ff"));
-      }
+    // Mantiene ambos filtros de texto compatibles con el mismo índice de búsqueda.
+    const searchText = filters.searchText ?? filters.clientNamePrefix;
+    if (searchText) {
+      baseConstraints.push(where("searchTerms", "array-contains", searchText.toLowerCase()));
     }
 
-    // where(Cliente Id) + orderBy(Timestamp) requiere índice compuesto inexistente;
-    // para consultas por cliente ordenamos localmente.
-    const sortLocally = Boolean(filters.clientId);
-    if (!sortLocally) baseConstraints.push(orderBy("Timestamp", "desc"));
+    // TODO: crear el índice compuesto para Cliente Id + Timestamp.
+    baseConstraints.push(orderBy("Timestamp", "desc"));
 
     // Paginación con cursor
     if (cursor) {
@@ -97,10 +80,6 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     const items: BillingModel[] = snap.docs.map((invoiceDoc) =>
       toBillingDomain(invoiceDoc.id, invoiceDoc.data() as RemoteResultBillingModel)
     );
-
-    if (sortLocally) {
-      items.sort((a, b) => b.timeStamp - a.timeStamp);
-    }
 
     const endReached = snap.docs.length < pageSize;
     const nextCursor = snap.docs.length > 0 ? snap.docs[snap.docs.length - 1].id : null;

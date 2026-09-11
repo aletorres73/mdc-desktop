@@ -4,6 +4,7 @@ import {
   setDocument,
   updateDocument,
   where,
+  orderBy,
   docRef,
   runFirestoreTransaction,
 } from "@/data/datasources/firestore";
@@ -32,8 +33,8 @@ export class FirestoreClientRepository implements IClientRepository {
 
   async searchClientsByPrefix(uid: string, prefix: string): Promise<ClientModel[]> {
     const remote = await getCollection<RemoteResultClientModel>(this.path(uid), [
-      where("Razón Social", ">=", prefix),
-      where("Razón Social", "<", prefix + "\uf8ff"),
+      where("searchTerms", "array-contains", prefix.toLowerCase()),
+      orderBy("Razón Social", "asc"),
     ]);
     return remote.map(toClientDomain);
   }
