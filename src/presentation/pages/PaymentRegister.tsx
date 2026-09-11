@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/presentation/contexts/AuthContext";
-import { usePaymentRegister, useReconcileMovement, useDeleteMovement, useUpdateMovement } from "@/presentation/hooks/usePaymentRegister";
+import { usePaymentRegister, useReconcileMovement, useDeleteMovement } from "@/presentation/hooks/usePaymentRegister";
 import { useInvoicesByBillingNumbers } from "@/presentation/hooks/useInvoices";
 import { Input } from "@/presentation/components/ui/input";
 import { Select } from "@/presentation/components/ui/select";
@@ -10,11 +10,8 @@ import { Button } from "@/presentation/components/ui/button";
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { EmptyState } from "@/presentation/components/shared/EmptyState";
 import { ErrorState } from "@/presentation/components/shared/ErrorState";
-import { DateInput } from "@/presentation/components/shared/DateInput";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/presentation/components/ui/dialog";
-import { Textarea } from "@/presentation/components/ui/textarea";
 import { formatMoney, formatDate } from "@/lib/utils";
-import { MOVEMENT_METHOD_LABELS, MOVEMENT_STATUS_LABELS, type MovementMethod, type PaymentRegisterModel } from "@/domain/entities/paymentRegister";
+import { MOVEMENT_METHOD_LABELS, MOVEMENT_STATUS_LABELS } from "@/domain/entities/paymentRegister";
 import {
   EMPTY_MOVEMENT_FILTERS,
   buildSegmentByDocument,
@@ -22,7 +19,7 @@ import {
   filterMovements,
   type MovementFilters,
 } from "@/domain/logic/paymentRegisterList";
-import { Wallet, CheckCircle2, Trash2, Search, Pencil } from "lucide-react";
+import { Wallet, CheckCircle2, Trash2, Search } from "lucide-react";
 
 export default function PaymentRegister() {
   const { appUser } = useAuth();
@@ -32,14 +29,7 @@ export default function PaymentRegister() {
   const { data: movements, isLoading } = movementsQuery;
   const invoicesQuery = useInvoicesByBillingNumbers(appUser?.uid, (movements ?? []).map((movement) => movement.documentNumber));
   const reconcile = useReconcileMovement(appUser?.uid);
-  const update = useUpdateMovement(appUser?.uid);
   const remove = useDeleteMovement(appUser?.uid);
-  const [editingMovement, setEditingMovement] = useState<PaymentRegisterModel | null>(null);
-  const [amount, setAmount] = useState("");
-  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [method, setMethod] = useState<MovementMethod>("TRANSFERENCIA");
-  const [notes, setNotes] = useState("");
-  const [validationError, setValidationError] = useState("");
 
   // El segmento no se guarda en el movimiento: se resuelve desde la factura asociada.
   const segmentByDocument = useMemo(
@@ -88,30 +78,6 @@ export default function PaymentRegister() {
     !!filters.search.trim() || !!filters.method || !!filters.status || !!filters.factory || !!filters.segment;
 
   const setFilter = (patch: Partial<MovementFilters>) => setFilters((prev) => ({ ...prev, ...patch }));
-
-  const openEditor = (movement: PaymentRegisterModel) => {
-    setEditingMovement(movement);
-    setAmount(String(movement.total));
-    setPaymentDate(new Date(movement.date).toISOString().slice(0, 10));
-    setMethod(movement.method);
-    setNotes(movement.notes);
-    setValidationError("");
-  };
-
-  const handleUpdate = async () => {
-    const value = parseFloat(amount);
-    const date = new Date(`${paymentDate}T00:00:00`).getTime();
-    if (!Number.isFinite(value) || value <= 0) {
-      setValidationError("El monto debe ser mayor a cero.");
-      return;
-    }
-    if (!Number.isFinite(date) || date > Date.now()) {
-      setValidationError("La fecha de pago no puede ser futura.");
-      return;
-    }
-    await update.mutateAsync({ movementId: editingMovement!.id, amount: value, method, notes, date });
-    setEditingMovement(null);
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -168,23 +134,6 @@ export default function PaymentRegister() {
       {(reconcile.isError || remove.isError) && (
         <ErrorState message="No se pudo actualizar el movimiento. Intentá nuevamente." />
       )}
-      {update.isError && (
-        <ErrorState message={update.error instanceof Error ? update.error.message : "No se pudo editar el movimiento."} />
-      )}
-
-      <Dialog open={!!editingMovement} onOpenChange={(open) => { if (!open) setEditingMovement(null); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Editar pago</DialogTitle></DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div className="space-y-1.5"><label className="text-sm font-medium">Monto</label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
-            <div className="space-y-1.5"><label className="text-sm font-medium">Fecha</label><DateInput value={paymentDate} onChange={setPaymentDate} /></div>
-            <div className="space-y-1.5"><label className="text-sm font-medium">Método</label><Select options={Object.entries(MOVEMENT_METHOD_LABELS).map(([value, label]) => ({ value, label }))} value={method} onChange={(e) => setMethod(e.target.value as MovementMethod)} /></div>
-            <div className="space-y-1.5"><label className="text-sm font-medium">Notas</label><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
-            {validationError && <p className="text-sm text-destructive">{validationError}</p>}
-          </div>
-          <DialogFooter><Button onClick={handleUpdate} loading={update.isPending}>{update.isPending ? "Guardando..." : "Guardar cambios"}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {isLoading ? (
         <LoadingState />
@@ -231,15 +180,6 @@ export default function PaymentRegister() {
                   </Badge>
                 </TableCell>
                 <TableCell className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Editar"
-                    disabled={update.isPending || reconcile.isPending || remove.isPending}
-                    onClick={() => openEditor(m)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
                   {m.status !== "IMPUTADO" && m.status !== "RECONCILIADO" && (
                     <Button
                       variant="ghost"
