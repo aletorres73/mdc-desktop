@@ -11,6 +11,7 @@ import { toPaymentRegisterDomain, toPaymentRegisterRemote } from "@/data/mappers
 import type { RemotePaymentRegisterResult } from "@/data/remote/remotePaymentRegister";
 import type { IPaymentRegisterRepository } from "@/domain/repositories/IPaymentRegisterRepository";
 import type { PaymentRegisterModel } from "@/domain/entities/paymentRegister";
+import type { QueryConstraint } from "firebase/firestore";
 
 export class FirestorePaymentRegisterRepository implements IPaymentRegisterRepository {
   private path(uid: string) {
@@ -19,11 +20,13 @@ export class FirestorePaymentRegisterRepository implements IPaymentRegisterRepos
 
   async getMovements(
     uid: string,
-    filters?: { clientId?: string; branch?: string },
+    filters?: { clientId?: string; branch?: string; dateFrom?: number; dateTo?: number },
   ): Promise<PaymentRegisterModel[]> {
-    const constraints = [];
+    const constraints: QueryConstraint[] = [];
     if (filters?.clientId) constraints.push(where("Cliente ID", "==", filters.clientId));
     if (filters?.branch) constraints.push(where("Marca", "==", filters.branch));
+    if (filters?.dateFrom !== undefined) constraints.push(where("Fecha", ">=", filters.dateFrom));
+    if (filters?.dateTo !== undefined) constraints.push(where("Fecha", "<=", filters.dateTo));
     const remote = await getCollection<RemotePaymentRegisterResult>(this.path(uid), constraints);
     return remote.map(toPaymentRegisterDomain);
   }

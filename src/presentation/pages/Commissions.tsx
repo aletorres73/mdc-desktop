@@ -19,14 +19,20 @@ export default function Commissions() {
   const [brand, setBrand] = useState("");
   const [segment, setSegment] = useState("");
   const [documentType, setDocumentType] = useState("");
-  const [appliedFilters, setAppliedFilters] = useState<CommissionFilters>({});
+  const [appliedDateFilters, setAppliedDateFilters] = useState<CommissionFilters | null>(null);
 
-  const { data: summary, isLoading } = useCommissionSummary(appUser?.uid, appliedFilters);
+  const { data: summary, isFetching } = useCommissionSummary(appUser?.uid, appliedDateFilters);
 
   const segmentOptions = useMemo(() => {
     if (brand) return factories?.find((factory) => factory.name === brand)?.branchList ?? [];
     return Array.from(new Set((summary ?? []).map((row) => row.segment).filter(Boolean)));
   }, [brand, factories, summary]);
+
+  const filteredSummary = useMemo(() => (summary ?? []).filter((row) => (
+    (!brand || row.brand === brand) &&
+    (!segment || row.segment === segment) &&
+    (!documentType || row.documentType === documentType)
+  )), [brand, documentType, segment, summary]);
 
   const clearFilters = () => {
     setStartDate("");
@@ -34,24 +40,19 @@ export default function Commissions() {
     setBrand("");
     setSegment("");
     setDocumentType("");
-    setAppliedFilters({});
+    setAppliedDateFilters(null);
   };
 
-  const dateRangeIncomplete = Boolean((startDate && !endDate) || (!startDate && endDate));
+  const hasCompleteDateRange = Boolean(startDate && endDate);
   const applyFilters = () => {
-    if (dateRangeIncomplete) return;
-    setAppliedFilters({
+    if (!hasCompleteDateRange) return;
+    setAppliedDateFilters({
       startDate: startDate ? new Date(`${startDate}T00:00:00`).getTime() : undefined,
       endDate: endDate ? new Date(`${endDate}T23:59:59.999`).getTime() : undefined,
-      brand: brand || undefined,
-      segment: segment || undefined,
-      documentType: documentType || undefined,
     });
   };
 
-  const totalCommission = useMemo(() => (summary ?? []).reduce((sum, s) => sum + s.commission, 0), [summary]);
-
-  if (isLoading) return <LoadingState className="min-h-[60vh]" />;
+  const totalCommission = useMemo(() => filteredSummary.reduce((sum, row) => sum + row.commission, 0), [filteredSummary]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -71,41 +72,47 @@ export default function Commissions() {
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Fábrica
-          <select value={brand} onChange={(event) => { setBrand(event.target.value); setSegment(""); }} className="h-9 rounded-md border border-input bg-background px-3 text-sm font-normal">
+          <select value={brand} disabled={!appliedDateFilters} onChange={(event) => { setBrand(event.target.value); setSegment(""); }} className="h-9 rounded-md border border-input bg-background px-3 text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
             <option value="">Todas</option>
             {(factories ?? []).map((factory) => <option key={factory.name} value={factory.name}>{factory.name}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Segmento
-          <select value={segment} onChange={(event) => setSegment(event.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm font-normal">
+          <select value={segment} disabled={!appliedDateFilters} onChange={(event) => setSegment(event.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
             <option value="">Todos</option>
             {segmentOptions.map((option) => <option key={option} value={option}>{option}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Tipo
-          <select value={documentType} onChange={(event) => setDocumentType(event.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm font-normal">
+          <select value={documentType} disabled={!appliedDateFilters} onChange={(event) => setDocumentType(event.target.value)} className="h-9 rounded-md border border-input bg-background px-3 text-sm font-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
             <option value="">Todo</option>
             <option value="Factura">Factura</option>
             <option value="Remito">Remito</option>
           </select>
         </label>
         <div className="flex items-end gap-2 lg:col-span-5">
-          <button type="button" onClick={applyFilters} disabled={dateRangeIncomplete} className="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50">
-            Aplicar filtros
+          <button type="button" onClick={applyFilters} disabled={!hasCompleteDateRange} className="h-9 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+            Consultar rango
           </button>
-          <button type="button" onClick={clearFilters} className="inline-flex h-9 items-center gap-1 rounded-md border border-border/70 px-3 text-sm text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={clearFilters} className="inline-flex h-9 items-center gap-1 rounded-md border border-border/70 px-3 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
             <X className="h-4 w-4" /> Limpiar filtros
           </button>
         </div>
       </div>
 
-      <KpiCard label="Comisión total" value={formatMoney(totalCommission)} icon={Percent} tone="emerald" className="max-w-xs" />
-
-      {!summary?.length ? (
-        <EmptyState icon={Percent} title="Sin datos" description="No hay facturación para calcular comisiones." />
+      {isFetching ? (
+        <LoadingState className="min-h-48 rounded-lg border border-border/50 bg-card" />
       ) : (
+        <>
+          <KpiCard label="Comisión total" value={formatMoney(totalCommission)} icon={Percent} tone="emerald" className="max-w-xs" />
+
+          {appliedDateFilters === null ? (
+        <EmptyState icon={Percent} title="Consultá un rango de fechas" description="Seleccioná Desde y Hasta para cargar las comisiones." />
+          ) : !filteredSummary.length ? (
+        <EmptyState icon={Percent} title="Sin datos" description="No hay facturación para calcular comisiones." />
+          ) : (
         <Table>
           <TableHeader>
             <TableRow>
@@ -120,7 +127,7 @@ export default function Commissions() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {summary.map((row) => (
+            {filteredSummary.map((row) => (
               <TableRow key={row.paymentId}>
                 <TableCell>{row.billingNumber}</TableCell>
                 <TableCell className="text-muted-foreground">{formatDate(row.paymentDate)}</TableCell>
@@ -138,6 +145,8 @@ export default function Commissions() {
             ))}
           </TableBody>
         </Table>
+          )}
+        </>
       )}
     </div>
   );

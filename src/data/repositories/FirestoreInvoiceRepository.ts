@@ -134,6 +134,24 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     return toBillingDomain(doc.id, doc.data() as RemoteResultBillingModel);
   }
 
+  async getInvoicesByBillingNumbers(uid: string, billingNumbers: string[]): Promise<BillingModel[]> {
+    const numbers = [...new Set(billingNumbers.map((value) => value.trim()).filter(Boolean))];
+    const invoices: BillingModel[] = [];
+
+    for (let index = 0; index < numbers.length; index += 30) {
+      const batch = numbers.slice(index, index + 30);
+      const snap = await getDocs(fsQuery(
+        collection(db, this.path(uid)),
+        where("Numero", "in", batch),
+      ));
+      invoices.push(...snap.docs.map((invoiceDoc) =>
+        toBillingDomain(invoiceDoc.id, invoiceDoc.data() as RemoteResultBillingModel),
+      ));
+    }
+
+    return invoices;
+  }
+
   async getAllInvoices(uid: string): Promise<BillingModel[]> {
     const snap = await getDocs(fsQuery(collection(db, this.path(uid))));
     return snap.docs.map((d) => toBillingDomain(d.id, d.data() as RemoteResultBillingModel));

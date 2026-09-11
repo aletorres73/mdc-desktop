@@ -68,8 +68,6 @@ export default function CreateOrder() {
     label: p.paymentName,
   }));
 
-  const effectiveDiscount = selectedCondition?.discount ?? 0;
-
   const updateArticle = (idx: number, patch: Partial<ArticleOrderModel>) => {
     setArticles((prev) => prev.map((a, i) => (i === idx ? { ...a, ...patch } : a)));
   };
