@@ -4,7 +4,7 @@ import { authUseCase } from "@/di/container";
 import { Button } from "@/presentation/components/ui/button";
 import { Input } from "@/presentation/components/ui/input";
 import { Label } from "@/presentation/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader } from "@/presentation/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/presentation/components/ui/card";
 import { ErrorState } from "@/presentation/components/shared/ErrorState";
 import { ROUTES } from "@/presentation/routes/routes";
 import { Loader2 } from "lucide-react";
@@ -33,8 +33,9 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-sm border-border/50 shadow-sm">
-        <CardHeader className="items-center gap-0 text-center">
-          <img src="/mdc-logo.png" alt="MDCapp" className="h-[200px] w-[250px] object-contain" />
+        <CardHeader className="items-center text-center">
+          <img src="/mdc-logo.png" alt="MDCapp" className="mb-2 h-20 w-20 object-contain" />
+          <CardTitle className="text-2xl font-black tracking-tight text-slate-900">MDCapp</CardTitle>
           <CardDescription>Gestión Mayorista</CardDescription>
         </CardHeader>
         <CardContent>
