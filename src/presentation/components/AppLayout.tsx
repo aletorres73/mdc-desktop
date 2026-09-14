@@ -59,9 +59,12 @@ export function AppLayout() {
         </div>
       )}
       <aside className="flex w-60 shrink-0 flex-col border-r border-border/50 bg-muted/30 px-3 py-4">
-        <div className="mb-6 px-2">
-          <p className="text-lg font-bold tracking-tight">MDC</p>
-          <p className="text-xs text-muted-foreground">Gestión Mayorista</p>
+        <div className="mb-6 flex items-center gap-3 px-2">
+          <img src="/mdc-logo.png" alt="MDCapp" className="h-10 w-10 object-contain" />
+          <div>
+            <p className="text-lg font-bold tracking-tight text-slate-900">MDCapp</p>
+            <p className="text-[11px] text-muted-foreground">Gestión Mayorista</p>
+          </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (

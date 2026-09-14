@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "mdc-desktop",
+  "productName": "MDCapp",
   "version": "0.1.0",
   "identifier": "com.aleln.mdc-desktop",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "mdc-desktop",
+        "title": "MDCapp | Gestión Mayorista",
         "width": 800,
         "height": 600
       }
