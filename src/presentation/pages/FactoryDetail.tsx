@@ -36,13 +36,16 @@ export default function FactoryDetail() {
   useEffect(() => {
     if (factory) {
       setSegments(factory.branchList);
-      setDefaultCommission(String(factory.defaultCommission * 100));
+      setDefaultCommission(String(factory.defaultCommission));
       setSegmentCommissions(
         Object.fromEntries(
-          Object.entries(factory.segmentCommissions ?? {}).map(([segment, commission]) => [segment, commission * 100]),
+          Object.entries(factory.segmentCommissions ?? {}).map(([segment, commission]) => [segment, commission]),
         ),
       );
-      setConditions(factory.paymentType);
+      setConditions(factory.paymentType.map((condition) => ({
+        ...condition,
+        discount: condition.discount * 100,
+      })));
     }
   }, [factory]);
 
@@ -77,11 +80,14 @@ export default function FactoryDetail() {
       name: decodedName,
       data: {
         branchList: segments,
-        defaultCommission: (parseFloat(defaultCommission) || 0) / 100,
+        defaultCommission: parseFloat(defaultCommission) || 0,
         segmentCommissions: Object.fromEntries(
-          Object.entries(nextSegmentCommissions).map(([segment, commission]) => [segment, commission / 100]),
+          Object.entries(nextSegmentCommissions).map(([segment, commission]) => [segment, commission]),
         ),
-        paymentType: conditions,
+        paymentType: conditions.map((condition) => ({
+          ...condition,
+          discount: condition.discount / 100,
+        })),
       },
     });
   };

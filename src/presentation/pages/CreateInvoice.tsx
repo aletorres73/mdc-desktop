@@ -67,7 +67,7 @@ export default function CreateInvoice() {
         articles: [],
         paymentCondition,
         expectedDiscount: discount,
-        toPay: numericTotal * (1 - discount / 100),
+        toPay: numericTotal * (1 - discount),
         payed: 0,
         rest: numericTotal,
         stateBilling: "Pendiente",

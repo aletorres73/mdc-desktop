@@ -38,6 +38,10 @@ export class AuthUseCase {
     return this.authRepo.resetPassword(email);
   }
 
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    return this.authRepo.changePassword(currentPassword, newPassword);
+  }
+
   getCurrentUser(): AppUser | null {
     return this.authRepo.getCurrentUser();
   }

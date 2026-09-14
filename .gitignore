@@ -26,3 +26,8 @@ dist-ssr
 .vscode
 .agents
 .github
+/.github/agents/
+!.github/
+!.github/workflows/
+!.github/workflows/release.yml
+/scripts

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { usePaymentRegister, useReconcileMovement, useDeleteMovement } from "@/presentation/hooks/usePaymentRegister";
-import { useAllInvoices } from "@/presentation/hooks/useInvoices";
+import { useInvoicesByBillingNumbers } from "@/presentation/hooks/useInvoices";
 import { Input } from "@/presentation/components/ui/input";
 import { Select } from "@/presentation/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
@@ -27,7 +27,7 @@ export default function PaymentRegister() {
 
   const movementsQuery = usePaymentRegister(appUser?.uid);
   const { data: movements, isLoading } = movementsQuery;
-  const invoicesQuery = useAllInvoices(appUser?.uid);
+  const invoicesQuery = useInvoicesByBillingNumbers(appUser?.uid, (movements ?? []).map((movement) => movement.documentNumber));
   const reconcile = useReconcileMovement(appUser?.uid);
   const remove = useDeleteMovement(appUser?.uid);
 

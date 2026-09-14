@@ -20,26 +20,24 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     return `users/${uid}/allBillings`;
   }
 
-  async getPendingInvoicesForAgenda(uid: string): Promise<BillingModel[]> {
-    // 1. Delegamos el filtrado primario a Firebase usando los estados activos.
-    // Esto excluye automáticamente el volumen histórico de facturas "Cobrado" o "Cerrada".
-    const q = fsQuery(
+  async getPendingInvoicesForAgenda(uid: string, dateFrom: number, dateTo: number): Promise<BillingModel[]> {
+    const scheduled = fsQuery(
       collection(db, this.path(uid)),
-      where("Estado", "in", ["Pendiente", "Por vencer", "Vencido"])
+      where("Estado", "in", ["Pendiente", "Por vencer", "Vencido"]),
+      where("Fecha Pago", ">=", dateFrom),
+      where("Fecha Pago", "<=", dateTo),
     );
-    
-    const snap = await getDocs(q);
-    
-    // 2. Mapeamos los datos al dominio. 
-    // toBillingDomain ya utiliza parseMoneyToNumber para convertir el string "Saldo" 
-    // a un número real en la propiedad 'rest'.
-    const activeInvoices = snap.docs.map((d) => 
-      toBillingDomain(d.id, d.data() as RemoteResultBillingModel)
+    const urgent = fsQuery(
+      collection(db, this.path(uid)),
+      where("Estado", "in", ["Vencido", "Por vencer"]),
     );
-
-    // 3. Filtramos localmente garantizando matemáticamente que haya deuda.
-    // Como activeInvoices es una lista pequeña, este filtro es instantáneo.
-    return activeInvoices.filter(invoice => invoice.rest > 0);
+    const [scheduledSnap, urgentSnap] = await Promise.all([getDocs(scheduled), getDocs(urgent)]);
+    const invoices = new Map<string, BillingModel>();
+    for (const invoiceDoc of [...scheduledSnap.docs, ...urgentSnap.docs]) {
+      const invoice = toBillingDomain(invoiceDoc.id, invoiceDoc.data() as RemoteResultBillingModel);
+      if (invoice.rest > 0) invoices.set(invoice.id!, invoice);
+    }
+    return [...invoices.values()];
   }
 
   async getInvoicesPage(
@@ -55,31 +53,14 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     if (filters.brand) baseConstraints.push(where("Marca", "==", filters.brand));
     if (filters.state) baseConstraints.push(where("Estado", "==", filters.state));
 
-    // Filtros de búsqueda delegados a Firestore
-    if (filters.clientNamePrefix) {
-      baseConstraints.push(where("Razon Social", ">=", filters.clientNamePrefix));
-      baseConstraints.push(where("Razon Social", "<", filters.clientNamePrefix + "\uf8ff"));
-    } else if (filters.searchText) {
-      const searchTerm = filters.searchText.trim();
-      const isNumeric = /^\d+$/.test(searchTerm);
-
-      if (isNumeric) {
-        // Si el usuario ingresa solo números, buscamos por número de factura
-        baseConstraints.push(where("Numero", ">=", searchTerm));
-        baseConstraints.push(where("Numero", "<", searchTerm + "\uf8ff"));
-      } else {
-        // Si ingresa texto, buscamos por Razón Social. 
-        // Nota: Firestore distingue mayúsculas de minúsculas de forma nativa.
-        // Lo ideal para el futuro es guardar un campo "razonSocial_lower" en Firestore.
-        baseConstraints.push(where("Razon Social", ">=", searchTerm));
-        baseConstraints.push(where("Razon Social", "<", searchTerm + "\uf8ff"));
-      }
+    // Mantiene ambos filtros de texto compatibles con el mismo índice de búsqueda.
+    const searchText = filters.searchText ?? filters.clientNamePrefix;
+    if (searchText) {
+      baseConstraints.push(where("searchTerms", "array-contains", searchText.toLowerCase()));
     }
 
-    // where(Cliente Id) + orderBy(Timestamp) requiere índice compuesto inexistente;
-    // para consultas por cliente ordenamos localmente.
-    const sortLocally = Boolean(filters.clientId);
-    if (!sortLocally) baseConstraints.push(orderBy("Timestamp", "desc"));
+    // TODO: crear el índice compuesto para Cliente Id + Timestamp.
+    baseConstraints.push(orderBy("Timestamp", "desc"));
 
     // Paginación con cursor
     if (cursor) {
@@ -97,10 +78,6 @@ export class FirestoreInvoiceRepository implements IInvoiceRepository {
     const items: BillingModel[] = snap.docs.map((invoiceDoc) =>
       toBillingDomain(invoiceDoc.id, invoiceDoc.data() as RemoteResultBillingModel)
     );
-
-    if (sortLocally) {
-      items.sort((a, b) => b.timeStamp - a.timeStamp);
-    }
 
     const endReached = snap.docs.length < pageSize;
     const nextCursor = snap.docs.length > 0 ? snap.docs[snap.docs.length - 1].id : null;

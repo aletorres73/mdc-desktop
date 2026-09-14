@@ -3,6 +3,9 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
   onAuthStateChanged as firebaseOnAuthStateChanged,
 } from "firebase/auth";
 import { auth } from "@/data/datasources/config";
@@ -31,6 +34,15 @@ export class FirebaseAuthRepository implements IAuthRepository {
 
   async resetPassword(email: string): Promise<void> {
     await sendPasswordResetEmail(auth, email);
+  }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const user = auth.currentUser;
+    if (!user?.email) throw new Error("No hay una sesión de email activa.");
+
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+    await updatePassword(user, newPassword);
   }
 
   getCurrentUser(): AppUser | null {

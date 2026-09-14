@@ -50,8 +50,8 @@ describe("Invoice business rules", () => {
     name: "Fábrica A",
     branchList: ["Premium"],
     paymentType: [],
-    defaultCommission: 0.05,
-    segmentCommissions: { Premium: 0.08 },
+    defaultCommission: 5,
+    segmentCommissions: { Premium: 8 },
   };
 
   const commissionBilling = {
@@ -95,7 +95,7 @@ describe("Invoice business rules", () => {
       isVirtual: false,
     };
 
-    expect(calculatePaymentCommission(payment, commissionBilling, [commissionFactory])).toBeCloseTo(16, 5);
+      expect(calculatePaymentCommission(payment, commissionBilling, [commissionFactory])).toBeCloseTo(13.8842975, 5);
   });
 
   it("does not calculate commission for virtual movements", () => {
@@ -230,8 +230,8 @@ describe("Invoice business rules", () => {
         name: "Fábrica A",
         branchList: ["Premium"],
         paymentType: [{ paymentName: "Contado", discount: 0, month: 0, expiration: 15, date: 0, quantity: 1 }],
-        defaultCommission: 0.05,
-        segmentCommissions: { Premium: 0.08 },
+        defaultCommission: 5,
+        segmentCommissions: { Premium: 8 },
       },
     ];
 
@@ -267,8 +267,8 @@ describe("Invoice business rules", () => {
         name: "Fábrica A",
         branchList: ["Premium"],
         paymentType: [{ paymentName: "Contado", discount: 0, month: 0, expiration: 15, date: 0, quantity: 1 }],
-        defaultCommission: 0.05,
-        segmentCommissions: { Gold: 0.08 },
+        defaultCommission: 5,
+        segmentCommissions: { Gold: 8 },
       },
     ];
 
@@ -303,7 +303,7 @@ describe("Invoice business rules", () => {
       name: "Fábrica A",
       branchList: ["Premium"],
       paymentType: [{ paymentName: "Contado", discount: 0, month: 0, expiration: 30, date: 0, quantity: 1 }],
-      defaultCommission: 0.05,
+      defaultCommission: 5,
       segmentCommissions: {},
     };
 
@@ -353,7 +353,7 @@ describe("Invoice business rules", () => {
         { name: "Pantalón", color: "Negro", value: 400, pairs: 10 },
       ],
       paymentCondition: "Contado",
-      expectedDiscount: 50,
+      expectedDiscount: 0.5,
       toPay: 950,
       payed: 350,
       rest: 600,
@@ -366,11 +366,11 @@ describe("Invoice business rules", () => {
       timeStamp: 0,
     };
 
-    expect(summarizeInvoice(billing as any)).toEqual({
+      expect(summarizeInvoice(billing as any)).toEqual({
       total: 1000,
       paid: 350,
       remaining: 600,
-      discount: 50,
+        discount: 0.5,
       articleCount: 2,
     });
   });

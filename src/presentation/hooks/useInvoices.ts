@@ -24,11 +24,10 @@ export function useInvoicesPage(
 }
 
 // Agrega esto en src/presentation/hooks/useInvoices.ts
-export function usePendingInvoicesForAgenda(uid: string | undefined) {
+export function usePendingInvoicesForAgenda(uid: string | undefined, dateFrom: number, dateTo: number) {
   return useQuery({
-    queryKey: ["agendaInvoices", uid],
-    // Asegúrate de haber expuesto getPendingInvoicesForAgenda en tu InvoiceUseCase
-    queryFn: () => invoiceUseCase.getPendingInvoicesForAgenda(uid!),
+    queryKey: ["agendaInvoices", uid, dateFrom, dateTo],
+    queryFn: () => invoiceUseCase.getPendingInvoicesForAgenda(uid!, dateFrom, dateTo),
     enabled: !!uid,
   });
 }
@@ -105,6 +104,15 @@ export function useAllInvoices(uid: string | undefined) {
     queryKey: ["allInvoices", uid],
     queryFn: () => invoiceUseCase.getAllInvoices(uid!),
     enabled: !!uid,
+  });
+}
+
+export function useInvoicesByBillingNumbers(uid: string | undefined, billingNumbers: string[]) {
+  const numbers = [...new Set(billingNumbers.map((value) => value.trim()).filter(Boolean))];
+  return useQuery({
+    queryKey: ["invoicesByBillingNumbers", uid, numbers],
+    queryFn: () => invoiceUseCase.getInvoicesByBillingNumbers(uid!, numbers),
+    enabled: !!uid && numbers.length > 0,
   });
 }
 

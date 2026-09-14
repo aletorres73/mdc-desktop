@@ -1,4 +1,4 @@
-import { getCollection, getCollectionGroup, getDocument, setDocument, deleteDocument, runFirestoreTransaction, docRef, where } from "@/data/datasources/firestore";
+import { getCollection, getCollectionGroup, getDocument, setDocument, deleteDocument, runFirestoreTransaction, docRef, where, orderBy, limit } from "@/data/datasources/firestore";
 import { toBuyOrderDomain, toBuyOrderRemote } from "@/data/mappers/buyOrderMapper";
 import type { RemoteResultBuyOrder } from "@/data/remote/remoteBuyOrder";
 import type { IBuyOrderRepository } from "@/domain/repositories/IBuyOrderRepository";
@@ -17,9 +17,11 @@ export class FirestoreBuyOrderRepository implements IBuyOrderRepository {
   async getAllBuyOrders(uid: string): Promise<BuyOrderModel[]> {
     try {
       // Consulta atómica: Trae todas las órdenes de toda la base de datos 
-      // estrictamente filtradas por el propietario. (1 sola petición a Firebase)
+      // estrictamente filtradas por el propietario, con límite y orden remoto.
       const remote = await getCollectionGroup<RemoteResultBuyOrder>("buyOrders", [
-        where("uid", "==", uid)
+        where("uid", "==", uid),
+        orderBy("Fecha de carga", "desc"),
+        limit(100),
       ]);
       return remote.map(toBuyOrderDomain);
     } catch (error) {

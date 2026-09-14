@@ -78,7 +78,7 @@ export default function Factories() {
                 </div>
                 <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2 text-right">
                   <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Comisión global</p>
-                  <p className="tabular-nums font-semibold">{(f.defaultCommission * 100).toFixed(1)}%</p>
+                  <p className="tabular-nums font-semibold">{f.defaultCommission.toFixed(1)}%</p>
                 </div>
               </div>
 
@@ -86,7 +86,7 @@ export default function Factories() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {Object.entries(f.segmentCommissions || {}).map(([segment, value]) => (
                     <span key={segment} className="rounded-full border border-border/60 bg-muted/20 px-2.5 py-1 text-xs">
-                      {segment}: {(value * 100).toFixed(1)}%
+                      {segment}: {value.toFixed(1)}%
                     </span>
                   ))}
                 </div>
@@ -103,7 +103,7 @@ export default function Factories() {
                       >
                         {condition.paymentName || "Sin nombre"}
                         {condition.expiration > 0 && ` · ${condition.expiration} días`}
-                        {condition.discount > 0 && ` · ${condition.discount}% dto.`}
+                        {condition.discount > 0 && ` · ${condition.discount * 100}% dto.`}
                       </span>
                     ))}
                   </div>

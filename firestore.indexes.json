@@ -1,0 +1,33 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "allBillings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "`Cliente Id`",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "Timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "allBillings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "Estado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "`Fecha Pago`",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

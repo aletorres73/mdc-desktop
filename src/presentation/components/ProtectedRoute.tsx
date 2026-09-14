@@ -8,10 +8,12 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ requiresSubscription }: ProtectedRouteProps) {
-  const { appUser, loading, isSubscriptionActive } = useAuth();
+  const { appUser, userProfile, loading, isSubscriptionActive } = useAuth();
 
   if (loading) return <LoadingState className="min-h-screen" />;
   if (!appUser) return <Navigate to={ROUTES.LOGIN} replace />;
+  // profile fetch for this user may still be in flight even when loading is false
+  if (requiresSubscription && !userProfile) return <LoadingState className="min-h-screen" />;
   if (requiresSubscription && !isSubscriptionActive) return <Navigate to={ROUTES.SUBSCRIPTION} replace />;
 
   return <Outlet />;

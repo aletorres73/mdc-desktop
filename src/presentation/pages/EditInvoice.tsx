@@ -87,7 +87,7 @@ export default function EditInvoice() {
         brand: factory.name, branch: selectedBranch, paymentCondition, type, total: numericTotal,
         loadDate: loadDate ? new Date(loadDate).getTime() : Date.now(),
         deliveryDate: deliveryDate ? new Date(deliveryDate).getTime() : 0,
-        expectedDiscount: discount, toPay: numericTotal * (1 - discount / 100),
+        expectedDiscount: discount, toPay: numericTotal * (1 - discount),
       });
       navigate(invoiceDetailPath(invoiceId), { state: { backToSearch, backToPath } });
     } catch (reason) {

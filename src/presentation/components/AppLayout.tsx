@@ -58,12 +58,13 @@ export function AppLayout() {
           <div className="animate-indeterminate-bar absolute h-full w-2/5 bg-primary" />
         </div>
       )}
-      <aside className="flex w-60 shrink-0 flex-col border-r border-border/50 bg-muted/30 px-3 py-4">
-        <div className="mb-6 px-2">
-          <p className="text-lg font-bold tracking-tight">MDC</p>
-          <p className="text-xs text-muted-foreground">Gestión Mayorista</p>
+      <aside className="flex w-40 shrink-0 flex-col border-r border-border/50 bg-muted/30 px-1">
+        <div className="flex items-center gap-1 px-2">
+          <div>
+            <img src="/mdc-logo.png" alt="MDCapp" className="h-[120px] w-[110px] object-contain" />
+          </div>
         </div>
-        <nav className="flex flex-1 flex-col gap-1">
+        <nav className="flex flex-1 flex-col gap-1 px-2">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
