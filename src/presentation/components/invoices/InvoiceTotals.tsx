@@ -9,10 +9,10 @@ interface InvoiceTotalsProps {
 /**
  * Montos alineados con TotalsCard de DetailInvoiceScreen.kt (app móvil).
  * Solo muestra: Total, Descuento sugerido, A cobrar, Pagado, Saldo.
- * Descuento sugerido (monto) = total * expectedDiscount/100 (expectedDiscount es porcentaje).
+ * Descuento sugerido (monto) = total * expectedDiscount (expectedDiscount es fracción).
  */
 export function InvoiceTotals({ invoice }: InvoiceTotalsProps) {
-  const discountAmount = invoice.total * (invoice.expectedDiscount / 100);
+  const discountAmount = invoice.total * invoice.expectedDiscount;
 
   const rows: { label: string; value: number; strong?: boolean; accent?: boolean }[] = [
     { label: "Total", value: invoice.total },
@@ -44,7 +44,7 @@ export function InvoiceTotals({ invoice }: InvoiceTotalsProps) {
                 {row.label}
                 {row.label === "Descuento sugerido" && invoice.expectedDiscount > 0 && (
                   <span className="ml-1.5 text-xs text-muted-foreground">
-                    ({invoice.expectedDiscount}%)
+                    ({invoice.expectedDiscount * 100}%)
                   </span>
                 )}
               </span>

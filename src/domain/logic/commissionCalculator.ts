@@ -42,7 +42,7 @@ export function calculateCommission(
     base = base / (1 + config.ivaRate);
   }
 
-  return base * rate;
+  return base * (rate / 100);
 }
 
 /** Calcula la comisión de un movimiento real imputado a una factura/remito. */
@@ -65,5 +65,5 @@ export function calculatePaymentCommission(
     ? payment.total / (1 + config.ivaRate)
     : payment.total;
 
-  return base * rate;
+  return base * (rate / 100);
 }

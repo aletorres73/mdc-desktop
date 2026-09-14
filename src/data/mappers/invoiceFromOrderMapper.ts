@@ -9,7 +9,7 @@ export function buyOrderToBilling(order: BuyOrderModel, billingNumber: string): 
     pairs: a.pairs,
   }));
   const total = articles.reduce((sum, a) => sum + a.value * a.pairs, 0);
-  const toPay = total * (1 - (order.discount || 0) / 100);
+  const toPay = total * (1 - (order.discount || 0));
 
   return {
     billingNumber,
