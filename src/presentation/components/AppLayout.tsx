@@ -61,7 +61,7 @@ export function AppLayout() {
       <aside className="flex w-40 shrink-0 flex-col border-r border-border/50 bg-muted/30 px-1">
         <div className="flex items-center gap-1 px-2">
           <div>
-            <img src="/mdc-logo.png" alt="MDCapp" className="h-30 w-40 " />
+            <img src="/mdc-logo.png" alt="MDCapp" className="h-[120px] w-[110px] object-contain" />
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1 px-2">

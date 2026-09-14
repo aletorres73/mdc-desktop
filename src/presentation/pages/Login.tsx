@@ -33,9 +33,8 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-sm border-border/50 shadow-sm">
-        <CardHeader className="items-center text-center">
-          <img src="/mdc-logo.png" alt="MDCapp" className="mb-2 h-20 w-20 object-contain" />
-          <CardTitle className="text-2xl font-black tracking-tight text-slate-900">MDCapp</CardTitle>
+        <CardHeader className="items-center gap-0 text-center">
+          <img src="/mdc-logo.png" alt="MDCapp" className="h-[200px] w-[250px] object-contain" />
           <CardDescription>Gestión Mayorista</CardDescription>
         </CardHeader>
         <CardContent>
