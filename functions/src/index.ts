@@ -10,7 +10,6 @@ if (getApps().length === 0) initializeApp();
 
 const db = getFirestore();
 const BATCH_SIZE = 400;
-const SEARCH_TERMS_TEST_UID = process.env.SEARCH_TERMS_TEST_UID?.trim();
 type DocumentData = Record<string, unknown>;
 type SearchDocument = QueryDocumentSnapshot<DocumentData>;
 
@@ -84,26 +83,19 @@ function getAfter(event: {data?: {after: {exists: boolean}}}): SearchDocument | 
 	return after?.exists ? after as SearchDocument : null;
 }
 
-function isTestUser(event: {params: {uid?: string}}): boolean {
-	return Boolean(SEARCH_TERMS_TEST_UID && event.params.uid === SEARCH_TERMS_TEST_UID);
-}
-
 export const maintainClients = onDocumentWritten("users/{uid}/clients/{clientId}", async (event) => {
-	if (!isTestUser(event)) return;
 	const after = getAfter(event);
 	if (!after) return;
 	await maintainDocument(after, "client");
 });
 
 export const maintainAllBillings = onDocumentWritten("users/{uid}/allBillings/{billingId}", async (event) => {
-	if (!isTestUser(event)) return;
 	const after = getAfter(event);
 	if (!after) return;
 	await maintainDocument(after, "billing");
 });
 
 export const maintainBuyOrders = onDocumentWritten("users/{uid}/clients/{clientId}/buyOrders/{orderId}", async (event) => {
-	if (!isTestUser(event)) return;
 	const after = getAfter(event);
 	if (!after) return;
 	await maintainDocument(after, "buyOrder");
@@ -138,21 +130,12 @@ async function processSnapshots(snapshots: SearchDocument[], collection: "client
 }
 
 export const backfillSearchTerms = onCall(async (request) => {
-	const authUid = request.auth?.uid;
-	const isConfiguredTestUser = authUid === SEARCH_TERMS_TEST_UID;
 	const isAdmin = request.auth?.token.admin === true;
-	const scope = request.data?.scope;
-	if (!authUid || (!isAdmin && !(isConfiguredTestUser && scope === "currentUser"))) {
+	if (!request.auth?.uid || !isAdmin) {
 		throw new HttpsError("permission-denied", "Se requiere el claim de administrador.");
 	}
 
-	if (scope !== undefined && scope !== "all" && scope !== "currentUser") {
-		throw new HttpsError("invalid-argument", "scope debe ser all o currentUser.");
-	}
-
-	const users = scope === "currentUser"
-		? {docs: [await db.collection("users").doc(authUid).get()]}
-		: await db.collection("users").get();
+	const users = await db.collection("users").get();
 	const clients: SearchDocument[] = [];
 	const billings: SearchDocument[] = [];
 	const buyOrders: SearchDocument[] = [];

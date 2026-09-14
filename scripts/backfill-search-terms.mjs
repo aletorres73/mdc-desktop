@@ -81,7 +81,7 @@ async function main() {
 
     const functions = getFunctions(app);
     const backfill = httpsCallable(functions, "backfillSearchTerms");
-    const response = await backfill({scope: "currentUser"});
+    const response = await backfill({});
     console.log("Backfill completado:");
     console.dir(response.data, {depth: null});
   } finally {
