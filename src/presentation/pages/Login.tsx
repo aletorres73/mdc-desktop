@@ -4,7 +4,7 @@ import { authUseCase } from "@/di/container";
 import { Button } from "@/presentation/components/ui/button";
 import { Input } from "@/presentation/components/ui/input";
 import { Label } from "@/presentation/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/presentation/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/presentation/components/ui/card";
 import { ErrorState } from "@/presentation/components/shared/ErrorState";
 import { ROUTES } from "@/presentation/routes/routes";
 import { Loader2 } from "lucide-react";
