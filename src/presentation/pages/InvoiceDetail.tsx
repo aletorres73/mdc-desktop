@@ -6,13 +6,11 @@ import {
   useDeleteInvoice,
   useAddInvoiceComment,
   useApplyInvoicePayment,
-  useChangePaymentCondition,
   useDeleteInvoicePayment,
   useReconcileInvoicePayment,
   useUpdateInvoicePayment,
 } from "@/presentation/hooks/useInvoices";
 import { usePaymentRegister } from "@/presentation/hooks/usePaymentRegister";
-import { useFactory } from "@/presentation/hooks/useFactories";
 import { InvoiceHeader } from "@/presentation/components/invoices/InvoiceHeader";
 import { InvoiceDates } from "@/presentation/components/invoices/InvoiceDates";
 import { InvoiceTotals } from "@/presentation/components/invoices/InvoiceTotals";
@@ -60,9 +58,6 @@ export default function InvoiceDetail() {
   const deletePayment = useDeleteInvoicePayment(appUser?.uid, invoiceId ?? "");
   const reconcilePayment = useReconcileInvoicePayment(appUser?.uid, invoiceId ?? "");
   const updatePayment = useUpdateInvoicePayment(appUser?.uid, invoiceId ?? "");
-  const changePaymentCondition = useChangePaymentCondition(appUser?.uid, invoiceId ?? "");
-
-  const { data: factory } = useFactory(appUser?.uid, invoice?.brand);
 
   const [comment, setComment] = useState("");
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -172,7 +167,7 @@ export default function InvoiceDetail() {
   // Descuento sugerido (paridad móvil): se ofrece solo si hay dto esperado
   // y todavía no existe un movimiento de pronto pago para esta factura.
   const hasProntoPago = invoiceMovements.some((m) => m.method === "PRONTO_PAGO");
-  const suggestedDiscountAmount = invoice.total * (invoice.expectedDiscount / 100);
+  const suggestedDiscountAmount = invoice.total * invoice.expectedDiscount;
   const showSuggestedDiscount = invoice.expectedDiscount > 0 && !hasProntoPago && suggestedDiscountAmount > 0;
 
   const handleApplySuggestedDiscount = async () => {
@@ -237,17 +232,7 @@ export default function InvoiceDetail() {
         <InvoiceTotals invoice={invoice} />
         <div className="flex h-full flex-col gap-4">
           <InvoiceDates invoice={invoice} />
-          <PaymentCondition
-            value={invoice.paymentCondition}
-            options={factory?.paymentType ?? []}
-            loading={changePaymentCondition.isPending}
-            onChange={async (nextPaymentName) => {
-              await changePaymentCondition.mutateAsync(nextPaymentName);
-            }}
-          />
-          {changePaymentCondition.isError && (
-            <ErrorState message={changePaymentCondition.error instanceof Error ? changePaymentCondition.error.message : "No se pudo cambiar la condición de pago."} />
-          )}
+          <PaymentCondition value={invoice.paymentCondition} />
         </div>
       </div>
 

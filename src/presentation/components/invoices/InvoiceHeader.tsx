@@ -21,7 +21,10 @@ export function InvoiceHeader({ invoice, backToPath, actions }: InvoiceHeaderPro
           Facturas
         </Link>
         <h1 className="text-2xl font-bold tracking-tight">Factura #{invoice.billingNumber}</h1>
-        <p className="text-sm text-muted-foreground">{invoice.clientName} · {invoice.brand}</p>
+        <p className="text-sm text-muted-foreground">
+          {invoice.clientName} · {invoice.brand}
+          {invoice.branch ? ` · ${invoice.branch}` : ""}
+        </p>
         <div className="mt-2">
           <StateBadge state={invoice.stateBilling} />
         </div>
