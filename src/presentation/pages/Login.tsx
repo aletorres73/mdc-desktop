@@ -7,9 +7,11 @@ import { Label } from "@/presentation/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader } from "@/presentation/components/ui/card";
 import { ErrorState } from "@/presentation/components/shared/ErrorState";
 import { ROUTES } from "@/presentation/routes/routes";
+import { useAppVersion } from "@/presentation/hooks/useAppVersion";
 import { Loader2 } from "lucide-react";
 
 export default function Login() {
+  const version = useAppVersion();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,6 +69,9 @@ export default function Login() {
               </Link>
             </div>
           </form>
+          <div className="mt-6 text-center text-xs text-muted-foreground/60">
+            v{version}
+          </div>
         </CardContent>
       </Card>
     </div>

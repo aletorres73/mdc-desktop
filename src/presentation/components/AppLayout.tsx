@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/presentation/contexts/AuthContext";
+import { useAppVersion } from "@/presentation/hooks/useAppVersion";
 import { ROUTES } from "@/presentation/routes/routes";
 
 const NAV_ITEMS = [
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
 
 export function AppLayout() {
   const { userProfile, signOut } = useAuth();
+  const version = useAppVersion();
   const pendingMutations = useIsMutating();
   const location = useLocation();
   const mainRef = useRef<HTMLElement | null>(null);
@@ -103,6 +105,9 @@ export function AppLayout() {
             <LogOut className="h-4 w-4 shrink-0" />
             <span>Cerrar sesión</span>
           </button>
+          <div className="px-3 pt-2 text-[11px] text-muted-foreground/60">
+            v{version}
+          </div>
         </div>
       </aside>
       <main ref={mainRef} className="flex-1 overflow-y-auto p-6">
