@@ -58,12 +58,11 @@ export function AppLayout() {
           <div className="animate-indeterminate-bar absolute h-full w-2/5 bg-primary" />
         </div>
       )}
-      <aside className="flex w-60 shrink-0 flex-col border-r border-border/50 bg-muted/30 px-3 py-4">
-        <div className="mb-6 flex items-center gap-3 px-2">
-          <img src="/mdc-logo.png" alt="MDCapp" className="h-10 w-10 object-contain" />
+      <aside className="flex w-50 shrink-0 flex-col border-r border-border/50 bg-muted/30 px-3 py-4">
+        <div className="mb-8 flex items-center gap-0">
           <div>
-            <p className="text-lg font-bold tracking-tight text-slate-900">MDCapp</p>
-            <p className="text-[11px] text-muted-foreground">Gestión Mayorista</p>
+            <img src="/mdc-logo.png" alt="MDCapp" className="h-[120px] w-[120px] object-contain" />
+            <p className="text-[11px] px-2 text-muted-foreground">Gestión Mayorista</p>
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1">

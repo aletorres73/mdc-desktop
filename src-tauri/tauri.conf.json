@@ -21,6 +21,14 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIzNDcxMDZGNTU2QUMwRDIKUldUU3dHcFZieEJIczgwQzNxZSs2OEsxcHM4eU51aHFnTjdTNXhpMXIrV0pUb05UMVpSRlBQNUEK",
+      "endpoints": [
+        "https://github.com/aletorres73/mdc-desktop/releases/latest/download/latest.json"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
