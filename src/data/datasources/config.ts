@@ -12,6 +12,15 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
+const missingConfig = Object.entries(firebaseConfig)
+  .filter(([key, value]) => key !== "measurementId" && !value)
+  .map(([key]) => key)
+  .join(", ");
+
+if (missingConfig) {
+  throw new Error(`Falta configuración de Firebase: ${missingConfig}`);
+}
+
 export const firebaseApp: FirebaseApp = getApps().length
   ? getApps()[0]
   : initializeApp(firebaseConfig);
