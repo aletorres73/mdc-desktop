@@ -16,6 +16,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useAppVersion } from "@/presentation/hooks/useAppVersion";
+import { useAppUpdater } from "@/presentation/hooks/useAppUpdater";
+import { UpdateNotification } from "@/presentation/components/shared/UpdateNotification";
 import { ROUTES } from "@/presentation/routes/routes";
 
 const NAV_ITEMS = [
@@ -32,6 +34,7 @@ const NAV_ITEMS = [
 export function AppLayout() {
   const { userProfile, signOut } = useAuth();
   const version = useAppVersion();
+  const updater = useAppUpdater();
   const pendingMutations = useIsMutating();
   const location = useLocation();
   const mainRef = useRef<HTMLElement | null>(null);
@@ -113,6 +116,7 @@ export function AppLayout() {
       <main ref={mainRef} className="flex-1 overflow-y-auto p-6">
         <Outlet />
       </main>
+      <UpdateNotification updater={updater} />
     </div>
   );
 }
