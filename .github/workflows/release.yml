@@ -28,3 +28,4 @@ jobs:
           releaseBody: Actualizacion automatica de MDCapp.
           releaseDraft: false
           prerelease: false
+          includeUpdaterJson: true
