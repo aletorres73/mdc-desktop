@@ -11,6 +11,7 @@ import { Label } from "@/presentation/components/ui/label";
 import { Select } from "@/presentation/components/ui/select";
 import { invoiceDetailPath, ROUTES } from "@/presentation/routes/routes";
 import { DateInput } from "@/presentation/components/shared/DateInput";
+import { todayLocalISODate, dateWithCurrentTime, parseLocalISODate } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 
 export default function CreateInvoice() {
@@ -27,7 +28,7 @@ export default function CreateInvoice() {
   const [paymentCondition, setPaymentCondition] = useState("");
   const [billingNumber, setBillingNumber] = useState("");
   const [type, setType] = useState("Factura");
-  const [loadDate, setLoadDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [loadDate, setLoadDate] = useState(() => todayLocalISODate());
   const [deliveryDate, setDeliveryDate] = useState("");
   const [total, setTotal] = useState("");
   const [error, setError] = useState("");
@@ -61,8 +62,8 @@ export default function CreateInvoice() {
         orderId: "",
         type,
         total: numericTotal,
-        loadDate: loadDate ? new Date(loadDate).getTime() : Date.now(),
-        deliveryDate: deliveryDate ? new Date(deliveryDate).getTime() : 0,
+        loadDate: loadDate === todayLocalISODate() ? Date.now() : dateWithCurrentTime(loadDate),
+        deliveryDate: deliveryDate ? parseLocalISODate(deliveryDate) : 0,
         payDate: 0,
         articles: [],
         paymentCondition,

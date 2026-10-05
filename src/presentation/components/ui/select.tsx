@@ -25,7 +25,7 @@ export const Select = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
         {...props}
       >
         {placeholder && (
-          <option value="" disabled>
+          <option value="">
             {placeholder}
           </option>
         )}

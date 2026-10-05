@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { clientDetailPath, orderDetailPath } from "@/presentation/routes/routes";
 import { DateInput } from "@/presentation/components/shared/DateInput";
+import { toLocalISODate, parseLocalISODate } from "@/lib/utils";
 import type { ArticleOrderModel, BuyOrderModel } from "@/domain/entities/buyOrder";
 import { Plus, Trash2 } from "lucide-react";
 
@@ -43,7 +44,7 @@ export default function CreateOrder() {
     setFactory(order.factory);
     setBranch(order.branch);
     setPaymentCondition(order.paymentCondition);
-    setDeliveryDate(order.deliveryDate ? new Date(order.deliveryDate).toISOString().slice(0, 10) : "");
+    setDeliveryDate(order.deliveryDate ? toLocalISODate(order.deliveryDate) : "");
     setComments(order.comments);
     setArticles(order.articles.length ? order.articles : [{ ...emptyArticle }]);
   }, [order]);
@@ -92,7 +93,7 @@ export default function CreateOrder() {
         client: client.clientName,
         factory,
         branch,
-        deliveryDate: deliveryDate ? new Date(`${deliveryDate}T00:00:00`).getTime() : 0,
+        deliveryDate: deliveryDate ? parseLocalISODate(deliveryDate) : 0,
         type: order?.type ?? "Pedido",
         billing: order?.billing ?? "",
         comments,

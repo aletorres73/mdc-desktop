@@ -29,7 +29,7 @@ import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { ErrorState } from "@/presentation/components/shared/ErrorState";
 import { EmptyState } from "@/presentation/components/shared/EmptyState";
 import { DateInput } from "@/presentation/components/shared/DateInput";
-import { formatMoney, formatDate } from "@/lib/utils";
+import { formatMoney, formatDate, todayLocalISODate, toLocalISODate, dateWithCurrentTime } from "@/lib/utils";
 import { editInvoicePath, orderDetailPath, ROUTES } from "@/presentation/routes/routes";
 import type { MovementMethod, PaymentRegisterModel } from "@/domain/entities/paymentRegister";
 import { MOVEMENT_METHOD_LABELS } from "@/domain/entities/paymentRegister";
@@ -63,7 +63,7 @@ export default function InvoiceDetail() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<PaymentRegisterModel | null>(null);
   const [amount, setAmount] = useState("");
-  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [paymentDate, setPaymentDate] = useState(() => todayLocalISODate());
   const [method, setMethod] = useState<MovementMethod>("TRANSFERENCIA");
   const [notes, setNotes] = useState("");
   const [paymentValidationError, setPaymentValidationError] = useState("");
@@ -123,7 +123,9 @@ export default function InvoiceDetail() {
 
   const handleAddPayment = async () => {
     const value = parseFloat(amount);
-    const date = new Date(`${paymentDate}T00:00:00`).getTime();
+    const date = editingPayment && paymentDate === toLocalISODate(editingPayment.date)
+      ? editingPayment.date
+      : dateWithCurrentTime(paymentDate);
     if (!Number.isFinite(value) || value <= 0) {
       setPaymentValidationError("El monto debe ser mayor a cero.");
       return;
@@ -147,7 +149,7 @@ export default function InvoiceDetail() {
   const openPaymentEditor = (payment: PaymentRegisterModel) => {
     setEditingPayment(payment);
     setAmount(String(payment.total));
-    setPaymentDate(new Date(payment.date).toISOString().slice(0, 10));
+    setPaymentDate(toLocalISODate(payment.date));
     setMethod(payment.method);
     setNotes(payment.notes);
     setPaymentValidationError("");

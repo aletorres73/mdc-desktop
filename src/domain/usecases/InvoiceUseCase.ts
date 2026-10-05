@@ -103,7 +103,7 @@ export class InvoiceUseCase {
     if (!invoice) throw new Error("Invoice not found");
     const factory = (await this.factoryRepo.getFactoryByName(uid, invoice.brand)) ?? undefined;
     const fallbackCondition = factory?.paymentType[0]?.paymentName ?? invoice.paymentCondition;
-    const validCondition = factory?.paymentType.some((condition) => condition.paymentName === paymentCondition)
+    const validCondition = paymentCondition === "" || factory?.paymentType.some((condition) => condition.paymentName === paymentCondition)
       ? paymentCondition
       : fallbackCondition;
     const recalculated = recalculateBilling({ ...invoice, paymentCondition: validCondition }, factory);

@@ -8,7 +8,7 @@ import { KpiCard } from "@/presentation/components/shared/KpiCard";
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { EmptyState } from "@/presentation/components/shared/EmptyState";
 import { DateInput } from "@/presentation/components/shared/DateInput";
-import { formatDate, formatMoney } from "@/lib/utils";
+import { formatDate, formatMoney, parseLocalISODate } from "@/lib/utils";
 import { Percent, X } from "lucide-react";
 
 export default function Commissions() {
@@ -47,7 +47,7 @@ export default function Commissions() {
   const applyFilters = () => {
     if (!hasCompleteDateRange) return;
     setAppliedDateFilters({
-      startDate: startDate ? new Date(`${startDate}T00:00:00`).getTime() : undefined,
+      startDate: startDate ? parseLocalISODate(startDate) : undefined,
       endDate: endDate ? new Date(`${endDate}T23:59:59.999`).getTime() : undefined,
     });
   };

@@ -12,6 +12,7 @@ import { Select } from "@/presentation/components/ui/select";
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { DateInput } from "@/presentation/components/shared/DateInput";
 import { invoiceDetailPath } from "@/presentation/routes/routes";
+import { toLocalISODate, dateWithCurrentTime, parseLocalISODate } from "@/lib/utils";
 import { ArrowLeft, Save } from "lucide-react";
 
 export default function EditInvoice() {
@@ -49,8 +50,8 @@ export default function EditInvoice() {
     setPaymentCondition(invoice.paymentCondition);
     setBillingNumber(invoice.billingNumber);
     setType(invoice.type);
-    setLoadDate(invoice.loadDate ? new Date(invoice.loadDate).toISOString().slice(0, 10) : "");
-    setDeliveryDate(invoice.deliveryDate ? new Date(invoice.deliveryDate).toISOString().slice(0, 10) : "");
+    setLoadDate(invoice.loadDate ? toLocalISODate(invoice.loadDate) : "");
+    setDeliveryDate(invoice.deliveryDate ? toLocalISODate(invoice.deliveryDate) : "");
     setTotal(String(invoice.total));
   }, [invoice]);
 
@@ -85,8 +86,12 @@ export default function EditInvoice() {
       await updateInvoice.mutateAsync({
         billingNumber: billingNumber.trim(), clientId: client.clientId, clientName: client.clientName,
         brand: factory.name, branch: selectedBranch, paymentCondition, type, total: numericTotal,
-        loadDate: loadDate ? new Date(loadDate).getTime() : Date.now(),
-        deliveryDate: deliveryDate ? new Date(deliveryDate).getTime() : 0,
+        loadDate: loadDate === toLocalISODate(invoice.loadDate)
+          ? invoice.loadDate
+          : loadDate ? dateWithCurrentTime(loadDate) : Date.now(),
+        deliveryDate: deliveryDate === toLocalISODate(invoice.deliveryDate)
+          ? invoice.deliveryDate
+          : deliveryDate ? parseLocalISODate(deliveryDate) : 0,
         expectedDiscount: discount, toPay: numericTotal * (1 - discount),
       });
       navigate(invoiceDetailPath(invoiceId), { state: { backToSearch, backToPath } });
@@ -136,7 +141,7 @@ export default function EditInvoice() {
             </div>
             <div className="space-y-1.5">
               <Label>Condición de pago</Label>
-              <Select options={conditionOptions} value={paymentCondition} disabled={!factory} onChange={(event) => setPaymentCondition(event.target.value)} />
+              <Select options={conditionOptions} placeholder="Sin condición" value={paymentCondition} disabled={!factory} onChange={(event) => setPaymentCondition(event.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>Tipo de documento</Label>

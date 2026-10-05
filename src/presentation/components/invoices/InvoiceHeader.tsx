@@ -20,7 +20,7 @@ export function InvoiceHeader({ invoice, backToPath, actions }: InvoiceHeaderPro
           <ArrowLeft className="h-3.5 w-3.5" />
           Facturas
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight">Factura #{invoice.billingNumber}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Factura {invoice.billingNumber}</h1>
         <p className="text-sm text-muted-foreground">
           {invoice.clientName} · {invoice.brand}
           {invoice.branch ? ` · ${invoice.branch}` : ""}
