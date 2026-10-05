@@ -11,7 +11,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Label } from "@/presentation/components/ui/label";
 import { Badge } from "@/presentation/components/ui/badge";
 import { clientDetailPath } from "@/presentation/routes/routes";
-import { Search, UserPlus, Users, Archive, RotateCcw } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Search, UserPlus, Users, Archive, RotateCcw } from "lucide-react";
+
+type SortKey = "clientId" | "clientName";
+type SortDir = "asc" | "desc";
 
 export default function Clients() {
   const { appUser } = useAuth();
@@ -22,6 +25,22 @@ export default function Clients() {
   const [newClientId, setNewClientId] = useState("");
   const [open, setOpen] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("clientId");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
+  const sortIcon = (key: SortKey) => {
+    if (sortKey !== key) return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />;
+    return sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />;
+  };
 
   const { data: clients, isLoading } = useClients(appUser?.uid, search);
   const createClient = useCreateClient(appUser?.uid);
@@ -30,6 +49,14 @@ export default function Clients() {
   const { data: suggestedId } = useSuggestedClientId(appUser?.uid, open);
 
   const visibleClients = (clients ?? []).filter((client) => showInactive || client.isActive !== false);
+
+  const sortedClients = [...visibleClients].sort((a, b) => {
+    const cmp =
+      sortKey === "clientId"
+        ? String(a.clientId).localeCompare(String(b.clientId), undefined, { numeric: true })
+        : a.clientName.localeCompare(b.clientName, "es", { sensitivity: "base" });
+    return sortDir === "asc" ? cmp : -cmp;
+  });
 
   const updateSearch = (value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -105,19 +132,37 @@ export default function Clients() {
 
       {isLoading ? (
         <LoadingState />
-      ) : !visibleClients.length ? (
+      ) : !sortedClients.length ? (
         <EmptyState icon={Users} title="Sin clientes" description="Creá el primer cliente para empezar." />
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Cliente ID</TableHead>
-              <TableHead>Razón social</TableHead>
+              <TableHead>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("clientId")}
+                  className="inline-flex items-center gap-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                >
+                  Cliente ID
+                  {sortIcon("clientId")}
+                </button>
+              </TableHead>
+              <TableHead>
+                <button
+                  type="button"
+                  onClick={() => toggleSort("clientName")}
+                  className="inline-flex items-center gap-1 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                >
+                  Razón social
+                  {sortIcon("clientName")}
+                </button>
+              </TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visibleClients.map((client) => (
+            {sortedClients.map((client) => (
               <TableRow key={client.clientId}>
                 <TableCell className="text-muted-foreground">{client.clientId}</TableCell>
                 <TableCell>
