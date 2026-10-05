@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useAllBuyOrders } from "@/presentation/hooks/useBuyOrders";
-import { buyOrderUseCase } from "@/di/container";
 import { Input } from "@/presentation/components/ui/input";
 import { Select } from "@/presentation/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
@@ -11,7 +10,7 @@ import { Button } from "@/presentation/components/ui/button";
 import { LoadingState } from "@/presentation/components/shared/LoadingState";
 import { EmptyState } from "@/presentation/components/shared/EmptyState";
 import { ErrorState } from "@/presentation/components/shared/ErrorState";
-import { formatMoney, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { orderDetailPath } from "@/presentation/routes/routes";
 import {
   distinctBuyOrderValues,
@@ -139,7 +138,6 @@ export default function BuyOrders() {
               <TableHead>Segmento</TableHead>
               <TableHead>Entrega</TableHead>
               <TableHead>Pares</TableHead>
-              <TableHead>Total</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -157,7 +155,6 @@ export default function BuyOrders() {
                 <TableCell className="tabular-nums">
                   {order.articles.reduce((sum, art) => sum + art.pairs, 0)}
                 </TableCell>
-                <TableCell className="tabular-nums">{formatMoney(buyOrderUseCase.calculateTotal(order))}</TableCell>
               </TableRow>
             ))}
           </TableBody>

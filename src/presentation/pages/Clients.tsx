@@ -16,6 +16,23 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Search, UserPlus, Users, Archive, Rota
 type SortKey = "clientId" | "clientName";
 type SortDir = "asc" | "desc";
 
+const SORT_STORAGE_KEY = "clients-sort";
+
+function loadSort(): { key: SortKey; dir: SortDir } {
+  try {
+    const raw = localStorage.getItem(SORT_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { key?: string; dir?: string };
+      if ((parsed.key === "clientId" || parsed.key === "clientName") && (parsed.dir === "asc" || parsed.dir === "desc")) {
+        return { key: parsed.key, dir: parsed.dir };
+      }
+    }
+  } catch {
+    // almacenamiento no disponible
+  }
+  return { key: "clientId", dir: "asc" };
+}
+
 export default function Clients() {
   const { appUser } = useAuth();
   const location = useLocation();
@@ -25,16 +42,18 @@ export default function Clients() {
   const [newClientId, setNewClientId] = useState("");
   const [open, setOpen] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>("clientId");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [{ key: sortKey, dir: sortDir }, setSort] = useState(loadSort);
 
   const toggleSort = (key: SortKey) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
+    setSort((prev) => {
+      const next = prev.key === key ? { key, dir: prev.dir === "asc" ? "desc" as const : "asc" as const } : { key, dir: "asc" as const };
+      try {
+        localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // almacenamiento no disponible
+      }
+      return next;
+    });
   };
 
   const sortIcon = (key: SortKey) => {
