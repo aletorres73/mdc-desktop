@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/presentation/contexts/AuthContext";
 import { useClient } from "@/presentation/hooks/useClients";
@@ -38,6 +38,66 @@ export default function CreateOrder() {
   const [comments, setComments] = useState("");
   const [articles, setArticles] = useState<ArticleOrderModel[]>([{ ...emptyArticle }]);
   const [error, setError] = useState("");
+  const articleNameRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const addArticle = () => {
+    setArticles((prev) => {
+      const lastArticle = prev[prev.length - 1] ?? { ...emptyArticle };
+      return [...prev, { ...emptyArticle, name: lastArticle.name }];
+    });
+    requestAnimationFrame(() => {
+      const inputs = articleNameRefs.current;
+      inputs[inputs.length - 1]?.focus();
+    });
+  };
+
+  const handleArticleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addArticle();
+      return;
+    }
+    if (!e.key.startsWith("Arrow")) return;
+
+    const input = e.currentTarget;
+    const cell = input.closest("td");
+    const row = cell?.closest("tr");
+    const tbody = row?.parentElement;
+    if (!cell || !row || !tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const rowIdx = rows.indexOf(row);
+    const cells = Array.from(row.querySelectorAll("td"));
+    const colIdx = cells.indexOf(cell);
+
+    if (input.type === "number" && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      e.preventDefault();
+      const step = e.key === "ArrowUp" ? 12 : -12;
+      const current = Number.parseInt(input.value, 10);
+      const base = Number.isFinite(current) ? current : 0;
+      updateArticle(rowIdx, { pairs: Math.max(0, base + step) });
+      return;
+    }
+
+    let target: HTMLInputElement | null = null;
+    if (e.key === "ArrowUp") {
+      target = rows[rowIdx - 1]?.querySelectorAll("td")[colIdx]?.querySelector("input") ?? null;
+    } else if (e.key === "ArrowDown") {
+      target = rows[rowIdx + 1]?.querySelectorAll("td")[colIdx]?.querySelector("input") ?? null;
+    } else if (e.key === "ArrowLeft") {
+      const atStart = input.selectionStart === null || input.selectionStart === 0;
+      if (atStart) target = cells[colIdx - 1]?.querySelector("input") ?? null;
+    } else if (e.key === "ArrowRight") {
+      const atEnd = input.selectionStart === null || input.selectionStart === input.value.length;
+      if (atEnd) target = cells[colIdx + 1]?.querySelector("input") ?? null;
+    }
+
+    if (target) {
+      e.preventDefault();
+      target.focus();
+      target.select();
+    }
+  };
 
   useEffect(() => {
     if (!order) return;
@@ -179,12 +239,7 @@ export default function CreateOrder() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  setArticles((prev) => {
-                    const lastArticle = prev[prev.length - 1] ?? { ...emptyArticle };
-                    return [...prev, { ...emptyArticle, name: lastArticle.name }];
-                  })
-                }
+                onClick={addArticle}
               >
                 <Plus className="h-4 w-4" />
                 Agregar
@@ -205,10 +260,17 @@ export default function CreateOrder() {
                     {articles.map((art, idx) => (
                       <TableRow key={idx}>
                         <TableCell>
-                          <Input value={art.name} onChange={(e) => updateArticle(idx, { name: e.target.value })} />
+                          <Input
+                            ref={(el) => {
+                              articleNameRefs.current[idx] = el;
+                            }}
+                            value={art.name}
+                            onChange={(e) => updateArticle(idx, { name: e.target.value })}
+                            onKeyDown={handleArticleKeyDown}
+                          />
                         </TableCell>
                         <TableCell>
-                          <Input value={art.color} onChange={(e) => updateArticle(idx, { color: e.target.value })} />
+                          <Input value={art.color} onChange={(e) => updateArticle(idx, { color: e.target.value })} onKeyDown={handleArticleKeyDown} />
                         </TableCell>
                         <TableCell className="align-middle">
                           <Input
@@ -227,12 +289,14 @@ export default function CreateOrder() {
                                 updateArticle(idx, { pairs: 0 });
                               }
                             }}
+                            onKeyDown={handleArticleKeyDown}
                           />
                         </TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"
                             size="icon"
+                            tabIndex={-1}
                             onClick={() => setArticles((prev) => prev.filter((_, i) => i !== idx))}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />

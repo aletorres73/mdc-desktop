@@ -38,6 +38,14 @@ export default function ClientDetail() {
   const brandFilter = searchParams.get("brand") ?? "";
   const branchFilter = searchParams.get("branch") ?? "";
   const typeFilter = searchParams.get("type") ?? "";
+  const activeTab = searchParams.get("tab") === "account" ? "account" : "orders";
+
+  const setActiveTab = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === "orders") next.delete("tab");
+    else next.set("tab", value);
+    setSearchParams(next, { replace: true });
+  };
 
   const backToSearch = typeof location.state?.backToSearch === "string" ? location.state.backToSearch : "";
   const backToClientsPath = `${ROUTES.CLIENTS}${backToSearch}`;
@@ -167,7 +175,7 @@ export default function ClientDetail() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="orders" className="w-full min-w-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full min-w-0">
           <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="orders" className="flex-1 gap-2 sm:flex-none"><ShoppingBag className="h-4 w-4" />Pedidos</TabsTrigger>
             <TabsTrigger value="account" className="flex-1 gap-2 sm:flex-none"><FileText className="h-4 w-4" />Cuenta corriente</TabsTrigger>
